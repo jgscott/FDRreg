@@ -20,7 +20,8 @@ where f^1(z) and f^0(z) are the densities/marginal likelihoods under the alterna
 }
 
 \usage{
-FDRreg(z, covars, nulltype = 'empirical', type = 'linear', nmc = 10000, nburn = 500, nmids = 150, densknots = 10, regknots = 5)
+FDRreg(z, covars, nulltype = 'empirical', type = 'linear', nmc = 10000, nburn = 500,
+nmids = 150, densknots = 10, regknots = 5)
 }
 
 \arguments{
