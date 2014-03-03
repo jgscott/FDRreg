@@ -3,3 +3,8 @@
 
 # Example code in package build process
 *-Ex.R
+src/FDRreg.o
+src/FDRreg.so
+src/RNG.o
+src/RRNG.o
+src/RcppExports.o

@@ -4,7 +4,6 @@
 #define __POLYAGAMMA__
 
 #include "RNG.hpp"
-#include "Matrix.h"
 #include <vector>
 #include <iostream>
 #include <stdexcept>
@@ -19,26 +18,13 @@ const double __TRUNC_RECIP = 1.0 / __TRUNC;
 class PolyaGamma
 {
 
-  // For sum of Gammas.
-  int T;
-  vector<double> b;
-
  public:
 
-  // Constructors.
-  PolyaGamma(int trunc = 200);
+  // Default constructor.
 
   // Draw.
-  // double draw(double n, double z, RNG& r);
   double draw(int n, double z, RNG& r);
-  double draw_sum_of_gammas(double n, double z, RNG& r);
   double draw_like_devroye(double z, RNG& r);
-
-  //void draw(MF x, double a, double z, RNG& r);
-  //void draw(MF x, MF a, MF z, RNG& r);
-
-  // Utility.
-  void set_trunc(int trunc);
 
   // Helper.
   double a(int n, double x);
@@ -48,33 +34,10 @@ class PolyaGamma
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-			       // Constructors //
-////////////////////////////////////////////////////////////////////////////////
-
-PolyaGamma::PolyaGamma(int trunc) : T(trunc), b(T)
-{
-  set_trunc(T);
-} // PolyaGamma
 
 ////////////////////////////////////////////////////////////////////////////////
 				 // Utility //
 ////////////////////////////////////////////////////////////////////////////////
-
-void PolyaGamma::set_trunc(int trunc)
-{
-  if (trunc < 1)
-    throw std::invalid_argument("PolyaGamma(int trunc): trunc < 1.");
-
-  T = trunc;
-  b.resize(T);
-
-  for(int k=0; k < T; ++k){
-    // + since we start indexing at 0.
-    double d = ((double) k + 0.5);
-    b[k] = FOURPISQ * d * d;
-  }
-} // set_trunc
 
 double PolyaGamma::a(int n, double x)
 {
@@ -169,15 +132,6 @@ double PolyaGamma::draw(int n, double z, RNG& r)
     sum += draw_like_devroye(z, r);
   return sum;
 }
-
-double PolyaGamma::draw_sum_of_gammas(double n, double z, RNG& r)
-{
-  double x = 0;
-  double kappa = z * z;
-  for(int k=0; k < T; ++k)
-    x += r.gamma_scale(n, 1.0) / (b[k] + kappa);
-  return 2.0 * x;
-} // draw
 
 double PolyaGamma::draw_like_devroye(double Z, RNG& r)
 {
