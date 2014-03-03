@@ -5,8 +5,16 @@ Version: 0.1
 Date: 2014-02-24
 Author: James G. Scott, with contributions from Rob Kass and Jesse Windle
 Maintainer: James G. Scott <james.scott@mccombs.utexas.edu>
-Description: Tools for FDR problems, including false discovery rate regression.  See corresponding paper: "False discovery rate regression: application to neural synchrony detection in primary visual cortex."  James G. Scott, Ryan C. Kelly, Matthew A. Smith, Robert E. Kass.
+Description: Tools for FDR problems, including false discovery rate regression.
+    See corresponding paper: "False discovery rate regression: application to
+    neural synchrony detection in primary visual cortex."  James G. Scott, Ryan
+    C. Kelly, Matthew A. Smith, Robert E. Kass.
 License: GPL (>= 3)
-Imports: Rcpp (>= 0.11.0), RcppArmadillo (>= 0.4.000.4), mosaic(>= 0.8-10)
-Depends: fda (>= 2.4.0), splines (>= 3.0.2)
+Imports:
+    Rcpp (>= 0.11.0),
+    RcppArmadillo (>= 0.4.000.4),
+    mosaic(>= 0.8-10)
+Depends:
+    fda (>= 2.4.0),
+    splines (>= 3.0.2)
 LinkingTo: Rcpp, RcppArmadillo

@@ -1,9 +1,9 @@
 #include "RcppArmadillo.h"
-#include <R_ext/utils.h>
+#include <R_ext/Utils.h>
 #include <iostream>
 #include <exception>
 #include "RNG.h"
-#include "PolyaGamma.hpp"
+#include "PolyaGamma.h"
 // Rcpp::depends(RcppArmadillo)
 
 using namespace Rcpp;

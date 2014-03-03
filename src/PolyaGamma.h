@@ -3,7 +3,7 @@
 #ifndef __POLYAGAMMA__
 #define __POLYAGAMMA__
 
-#include "RNG.hpp"
+#include "RNG.h"
 #include <vector>
 #include <iostream>
 #include <stdexcept>

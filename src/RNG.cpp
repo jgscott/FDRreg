@@ -1,4 +1,4 @@
-#include "RNG.hpp"
+#include "RNG.h"
 
 // #ifdef USE_R
 // #include "RRNG.cpp"
@@ -11,7 +11,7 @@
 #ifndef NTHROW
 #define TREOR(MESS, VAL) throw std::runtime_error(MESS);
 #else
-#define TREOR(MESS, VAL) fprintf(stderr, MESS); return VAL;
+#define TREOR(MESS, VAL) Rprintf( MESS); return VAL;
 #endif
 #endif
 
@@ -68,13 +68,13 @@ double RNG::tnorm(double left, double right)
   if (std::isnan(right) || std::isnan(left)) 
   #endif
   {
-    fprintf(stderr, "Warning: nan sent to RNG::tnorm: left=%g, right=%g\n", left, right);
+    Rprintf( "Warning: nan sent to RNG::tnorm: left=%g, right=%g\n", left, right);
     TREOR("RNG::tnorm: parameter problem.\n", 0);
     // throw std::runtime_error("RNG::tnorm: parameter problem.\n");
   }
 
   if (right < left) {
-    fprintf(stderr, "Warning: left: %g, right:%g.\n", left, right);
+    Rprintf( "Warning: left: %g, right:%g.\n", left, right);
     TREOR("RNG::tnorm: parameter problem.\n", 0);
   }
 
@@ -138,8 +138,8 @@ double RNG::tnorm(double left, double right, double mu, double sd)
   // I want to check this here as well so we can see what the input was.
   // It may be more elegant to try and catch tdraw.
   if (newright < newleft) {
-    fprintf(stderr, "left, right, mu, sd: %g, %g, %g, %g \n", left, right, mu, sd);
-    fprintf(stderr, "nleft, nright: %g, %g\n", newleft, newright);
+    Rprintf( "left, right, mu, sd: %g, %g, %g, %g \n", left, right, mu, sd);
+    Rprintf( "nleft, nright: %g, %g\n", newleft, newright);
     TREOR("RNG::tnorm: parameter problem.\n", 0);
   }
 
@@ -149,9 +149,9 @@ double RNG::tnorm(double left, double right, double mu, double sd)
   // It may be the case that there is some numerical error and that the draw
   // ends up out of bounds.
   if (draw < left || draw > right){
-    fprintf(stderr, "Error in tnorm: draw not in bounds.\n");
-    fprintf(stderr, "left, right, mu, sd: %g, %g, %g, %g\n", left, right, mu, sd);
-    fprintf(stderr, "nleft, nright, tdraw, draw: %g, %g, %g, %g\n", newleft, newright, tdraw, draw);
+    Rprintf( "Error in tnorm: draw not in bounds.\n");
+    Rprintf( "left, right, mu, sd: %g, %g, %g, %g\n", left, right, mu, sd);
+    Rprintf( "nleft, nright, tdraw, draw: %g, %g, %g, %g\n", newleft, newright, tdraw, draw);
   }
 
   return draw;
@@ -201,7 +201,7 @@ double RNG::right_tgamma_beta(double shape, double rate)
   while (u > cdf) {
     cdf += omega_k(++k, a, b);
     if (k % 100000 == 0) {
-      printf("right_tgamma_beta (itr k=%i): a=%g, b=%g, u=%g, cdf=%g\n", k, a, b, u, cdf);
+      Rprintf("right_tgamma_beta (itr k=%i): a=%g, b=%g, u=%g, cdf=%g\n", k, a, b, u, cdf);
       #ifdef USE_R
       R_CheckUserInterrupt();
       #endif
@@ -237,11 +237,11 @@ double RNG::ltgamma(double shape, double rate, double trunc)
   double b = rate * trunc;
 
   if (trunc <=0) {
-    fprintf(stderr, "ltgamma: trunc = %g < 0\n", trunc);
+    Rprintf( "ltgamma: trunc = %g < 0\n", trunc);
     return 0;
   }
   if (shape < 1) {
-    fprintf(stderr, "ltgamma: shape = %g < 1\n", shape);
+    Rprintf( "ltgamma: shape = %g < 1\n", shape);
     return 0;
   }
 
@@ -289,10 +289,10 @@ double RNG::rtinvchi2(double scale, double trunc)
   // // I need to consider using a different truncated normal sampler.
   // double E1 = r.expon_rate(1.0); double E2 = r.expon_rate(1.0);
   // while ( (E1*E1) > (2 * E2 / R)) {
-  //   // printf("E %g %g %g %g\n", E1, E2, E1*E1, 2*E2/R);
+  //   // Rprintf("E %g %g %g %g\n", E1, E2, E1*E1, 2*E2/R);
   //   E1 = r.expon_rate(1.0); E2 = r.expon_rate(1.0);
   // }
-  // // printf("E %g %g \n", E1, E2);
+  // // Rprintf("E %g %g \n", E1, E2);
   // X = 1 + E1 * R;
   // X = R / (X * X);
   // X = scale * X;
