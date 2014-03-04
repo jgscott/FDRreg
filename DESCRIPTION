@@ -12,8 +12,7 @@ Description: Tools for FDR problems, including false discovery rate regression.
 License: GPL (>= 3)
 Imports:
     Rcpp (>= 0.11.0),
-    RcppArmadillo (>= 0.4.000.4),
-    mosaic(>= 0.8-10)
+    mosaic (>= 0.8-10)
 Depends:
     fda (>= 2.4.0),
     splines (>= 3.0.2)
