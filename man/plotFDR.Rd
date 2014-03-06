@@ -54,13 +54,14 @@ z = rnorm(N, thetatrue, 1)
 hist(z, 100, prob=TRUE, col='lightblue', border=NA)
 curve(dnorm(x,0,1), add=TRUE, n=1001)
 
+\dontrun{
 # Fit the model
 fdr1 <- FDRreg(z, covars=X, nmc=2500, nburn=100, nmids=120, nulltype='theoretical')
 # Show the empirical-Bayes estimate of the mixture density
 # and the findings at a specific FDR level
 Q = 0.1
 plotFDR(fdr1, Q=Q, showfz=TRUE)
-
+}
 }
 
 %\references{

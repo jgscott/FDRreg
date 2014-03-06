@@ -52,6 +52,7 @@ z = rnorm(N, thetatrue, 1)
 hist(z, 100, prob=TRUE, col='lightblue', border=NA)
 curve(dnorm(x,0,1), add=TRUE, n=1001)
 
+\dontrun{
 # Fit the model
 fdr1 <- FDRreg(z, covars=X, nmc=2500, nburn=100, nmids=120, nulltype='theoretical')
 
@@ -76,7 +77,7 @@ plot(z, fdr1$localfdr, ylab='Local false-discovery rate')
 
 # Extract findings at level FDR = Q
 myfindings = which(fdr1$FDR <= Q)
-
+}
 
 }
 
