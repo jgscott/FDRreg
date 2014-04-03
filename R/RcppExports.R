@@ -13,8 +13,8 @@ FDRregCPP <- function(z, X, M0, MTot, PriorPrecision, PriorMean, nmc, nburn) {
     .Call('FDRreg_FDRregCPP', PACKAGE = 'FDRreg', z, X, M0, MTot, PriorPrecision, PriorMean, nmc, nburn)
 }
 
-BayesFDRregCPP <- function(z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid) {
-    .Call('FDRreg_BayesFDRregCPP', PACKAGE = 'FDRreg', z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid)
+BayesFDRregCPP <- function(z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid, muguess) {
+    .Call('FDRreg_BayesFDRregCPP', PACKAGE = 'FDRreg', z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid, muguess)
 }
 
 dnormix <- function(y, weights, mu, tau2) {

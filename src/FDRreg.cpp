@@ -16,6 +16,8 @@ T square( const T& x) {
   return x * x;
 }
 
+// These check interrupt bits straight from RCPP without the OpenMP support
+
 class interrupt_exception : public std::exception {
 public:
     /**
@@ -91,7 +93,7 @@ NumericVector rdirichlet_once(NumericVector alpha) {
 
 
 // compute the inverse logit transform for an arma::vec
-colvec InvLogit(const arma::vec & x) {
+inline colvec InvLogit(const arma::vec & x) {
   int d = x.n_elem;
   colvec result(d);
   for(int i=0; i<d; i++) {
@@ -244,7 +246,7 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
 
 
 // [[Rcpp::export]]
-SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int ncomps, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn, NumericVector grid) {
+SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int ncomps, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn, NumericVector grid, NumericVector muguess) {
   // z is an n-vector of test statistics
   // X is a design matrix in the FDRR problem, including the intercept
   // M0 is a vector of marginal likelihoods, f_0(z), under the null hypothesis
@@ -252,13 +254,14 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
   // PriorPrecision and PriorMean are the parameters of the multivariate normal prior for the regression coefficients
   // nmc and nburn say how long to run the Markov chain
 
+  GetRNGstate();
+
   // Precompute what we can
   int ncases = X.n_rows;
   int nfeatures = X.n_cols;
   colvec PriorPrecxMean = PriorPrecision * PriorMean;
   colvec pgscale(ncases, fill::ones);
   colvec onehalf(ncases);
-  NumericVector sigma2(ncases, 1.0);
   onehalf.fill(0.5);
   bool interrupt = false;
 
@@ -286,8 +289,8 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
   // Mixture model parameters for alternative hypothesis
   NumericVector comp_alpha(ncomps,1.0); // Dirichlet prior for mixing weifhts
   NumericVector comp_means(ncomps, 0.0);
-  NumericVector comp_marginalvariance(ncomps, 4.0); // = tau2[k] + 1, integrating out the random mean
-  NumericVector comp_marginalsd(ncomps, 2.0);
+  NumericVector comp_marginalvariance(ncomps, 2.0); // = tau2[k] + 1, integrating out the random mean
+  NumericVector comp_marginalsd = sqrt(comp_marginalvariance);
   NumericVector comp_weights(ncomps, 1.0/ncomps);
   NumericVector M1 = dnorm(z,0.0,3.0);
 
@@ -302,7 +305,7 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
   beta[0] = log(beta[0]/(1-beta[0]));
 
   // Initialize component means
-  comp_means = rnorm(5, 0.0, 3.0);
+  comp_means = muguess;
 
   // Main MCMC loop
   for(int i=0; i<nsamples; i++) {
@@ -332,7 +335,7 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
     // Component-level sufficient statistics: just redeclare each pass through
     NumericVector thisprob(ncomps, 0.0);
     NumericVector sumsignals(ncomps, 0.0);
-    NumericVector nsignals(ncomps,0.0);
+    NumericVector nsignals(ncomps, 0.0);
     NumericVector totsumsq(ncomps, 0.0);
     NumericVector tval(ncomps, 0.0);
     int whichcomponent=ncomps;
@@ -341,34 +344,31 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
     // for the signals, draw the mixture component and collect the sufficient statistics
     // Note that we don't actually need to save the model indicators
     for(int j=0; j < ncases; j++) {
-      if(Gamma[j] != 0) {
+      if(Gamma[j] > 0) {
 	tval = (comp_means - z[j])/comp_marginalsd;
 	thisprob = comp_weights*(dnorm(tval,0.0,1.0)/comp_marginalsd);
 	whichcomponent = FDRreg::mysample(thisprob);
 	nsignals[whichcomponent] += 1.0;
 	sumsignals[whichcomponent] += z[j];
 	resid = z[j] - comp_means[whichcomponent];
-	totsumsq[whichcomponent] += resid*resid;
+	totsumsq[whichcomponent] += (resid*resid);
       }
     }
 
     // Update component-level parameters using the sufficient stats we've aggregated
     NumericVector eps = rnorm(ncomps, 0.0, 1.0);
     for(int k=0; k<ncomps; k++) {
-      comp_marginalvariance[k] = 1.0/rtgamma_once( (1.0+sumsignals[k])/2.0, (1.0 + totsumsq[k])/2.0, 0.0, 1.0);
-      comp_marginalsd[k] = sqrt(comp_marginalvariance[k]);
+      comp_marginalvariance[k] = 1.0/rtgamma_once( (1.0+nsignals[k])/2.0, (1.0 + totsumsq[k])/2.0, 0.0, 1.0);
       tau2 =  comp_marginalvariance[k] - 1.0;
       muvar = tau2/(nsignals[k] + tau2*0.01);
       muhat = sumsignals[k]/(nsignals[k] + 0.01*tau2);
       comp_means[k] = muhat + sqrt(muvar)*eps[k];
     }
+    comp_marginalsd = sqrt(comp_marginalvariance);
     comp_weights = rdirichlet_once(comp_alpha + nsignals);
 
-    // // Recalculate marginal likelihood under mixture-of-normals alternative
-    // for(int j=0; j < ncases; j++) {
-    //   eps = (comp_means - z[j])/sqrt(comp_marginalvariance);
-    //   M1[j] = sum(comp_weights * dnorm(eps, 0.0, 1.0)/sqrt(comp_marginalvariance));
-    // }
+    // Recalculate marginal likelihood under mixture-of-normals alternative
+    M1 = FDRreg::dnormix(z, comp_weights, comp_means, comp_marginalvariance);
 
     // Draw Polya-Gamma latents, given current regression estimate of log odds
     omega = rpg(pgscale, logodds);
@@ -382,13 +382,15 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
       betasave.row(i-nburn) = PosteriorMean.t();
       priorprobsave = priorprobsave + priorprob;
       postprobsave = postprobsave + postprob;
-      weightssave(i-nburn,_) = nsignals;
-      musave(i-nburn,_) = sumsignals;
-      varsave(i-nburn,_) = totsumsq;
+      weightssave(i-nburn,_) = comp_weights;
+      musave(i-nburn,_) = comp_means;
+      varsave(i-nburn,_) = comp_marginalvariance - 1.0;
     }
   }
   postprobsave = (1.0/nmc)*postprobsave;
   priorprobsave = (1.0/nmc)*priorprobsave;
+
+  PutRNGstate();
 
   return Rcpp::List::create(Rcpp::Named("priorprob")=priorprobsave,
 			    Rcpp::Named("postprob")=postprobsave,

@@ -60,7 +60,7 @@ FDRreg = function(z, covars, nulltype='empirical', type='linear', nmc=10000, nbu
 
 
 
-BayesFDRreg = function(z, covars, nulltype='empirical', type='linear', nmc=10000, nburn=500, nmids=150, densknots=10, ncomps=5, regknots=5, verbose=500) {
+BayesFDRreg = function(z, covars, nulltype='empirical', type='linear', nmc=10000, nburn=500, nmids=150, densknots=10, ncomps=5, regknots=5, verbose=500, priorpars=NULL) {
 # More Bayesian version of false discovery rate regression
 # z = vector of z scores
 # covars = design matrix of covariates, assumed NOT to have an intercept just as in vanilla lm()
@@ -104,21 +104,23 @@ BayesFDRreg = function(z, covars, nulltype='empirical', type='linear', nmc=10000
 	MTot = l1$fz
 	
 	# Initialize MCMC
-	PriorPrec = diag(c(1e-9, rep(0.1, P-1)))
-	PriorMean = rep(0,P)
+	if(missing(priorpars)) {
+		PriorPrec = diag(c(1e-9, rep(0.1, P-1)))
+		PriorMean = rep(0,P)
+	} else{
+		PriorPrec = priorpars$PriorPrec
+		PriorMean = priorpars$PriorMean
+	}
+	muguess = quantile(z[abs(z)>2], probs=seq(0.025,0.975, length=ncomps))
 	
 	# Pass to C++ and return result
-	out1 = BayesFDRregCPP(z, X, M0=M0, ncomps, PriorPrec, PriorMean, nmc=nmc, nburn=nburn, grid=l1$mids)
+	out1 = BayesFDRregCPP(z, X, M0=M0, ncomps, PriorPrec, PriorMean, nmc=nmc, nburn=nburn, grid=l1$mids, muguess = muguess)
 	out2 = getFDR(out1$postprob)
 	list(z=z, localfdr=out2$localfdr, FDR=out2$FDR, X=X, grid=l1$mids, breaks=l1$breaks,
-         grid.fz=l1$zdens, grid.f0z=grid.f0z, grid.zcounts=l1$zcounts, dnull = M0, falt = out1$fthetasave,
+         grid.fz=l1$zdens, grid.f0z=grid.f0z, grid.zcounts=l1$zcounts, dnull = M0,
          dmix=MTot, empirical.null=list(mu0=mu0, sig0=sig0), betasave = out1$betasave,
          musave = out1$musave, weightssave = out1$weightssave, varsave = out1$varsave,
          priorprob = out1$priorprob, postprob = out1$postprob, fjindex=fjindex)
-         
-	# # Set up the grid for the approximation to f1(z)
-	# mids = l1$mids
-	# breaks = l1$breaks
 
 	# # Initialize MCMC
 	# PriorPrec = diag(c(1e-9, rep(0.1, P-1)))
@@ -163,8 +165,8 @@ BayesFDRreg = function(z, covars, nulltype='empirical', type='linear', nmc=10000
 		# muvar = 1/{nsig/comp_variance + 0.01}
 		# muhat = muvar*{sumsignals/comp_variance}
 		# comp_means = rnorm(ncomps, muhat, sqrt(muvar))	
+		# comp_weights = rdirichlet_once(rep(1, ncomps) + nsig)
 		# M1 = marnormix(z, rep(1,N), comp_weights, comp_means, comp_variance)
-		
 
 		# ### Update latent variables in logit likelihood
 		# Om = as.numeric(rpg(N,rep(1,N),Psi))

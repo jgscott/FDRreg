@@ -65,8 +65,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // BayesFDRregCPP
-SEXP BayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, int ncomps, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, NumericVector grid);
-RcppExport SEXP FDRreg_BayesFDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP ncompsSEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP, SEXP gridSEXP) {
+SEXP BayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, int ncomps, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, NumericVector grid, NumericVector muguess);
+RcppExport SEXP FDRreg_BayesFDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP ncompsSEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP, SEXP gridSEXP, SEXP muguessSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
@@ -80,7 +80,8 @@ BEGIN_RCPP
         Rcpp::traits::input_parameter< int >::type nmc(nmcSEXP );
         Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP );
         Rcpp::traits::input_parameter< NumericVector >::type grid(gridSEXP );
-        SEXP __result = BayesFDRregCPP(z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid);
+        Rcpp::traits::input_parameter< NumericVector >::type muguess(muguessSEXP );
+        SEXP __result = BayesFDRregCPP(z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid, muguess);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);
