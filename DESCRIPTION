@@ -15,5 +15,7 @@ Imports:
     mosaic (>= 0.8-10)
 Depends:
     fda (>= 2.4.0),
-    splines (>= 3.0.2)
+    splines (>= 3.0.2),
+    BayesLogit (>= 0.2-4),
+    mvtnorm (>= 0.9)
 LinkingTo: Rcpp, RcppArmadillo

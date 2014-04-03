@@ -1,27 +1,19 @@
-colnormalize = function(X) {
-	# Normalizes each column of x to have mean 0 and sd 1
-	Z = X
-	d = ncol(X)
-	for(j in 1:d) {
-		Z[,j] = {X[,j] - mean(X[,j], na.rm=TRUE)}/sd(X[,j], na.rm=TRUE)
-	}
-	Z;
+ilogit = function(x) 1/{1+exp(-x)}
+flogit = function(x) log(x/{1-x})
+
+# Truncated gamma random draws
+rtgamma = function(n, a, b, lb, ub) {
+	lub = pgamma(lb, a, rate=b)
+	uub = pgamma(ub, a, rate=b)
+	u = runif(n, lub, uub)
+	qgamma(u, a, rate=b)
 }
 
-colcenter = function(X) {
-	# Normalizes each column of x to have mean 0
-	Z = X
-	d = ncol(X)
-	for(j in 1:d) {
-		Z[,j] = {X[,j] - mean(X[,j], na.rm=TRUE)}
-	}
-	Z;
-}
 
 make.bspline.matrix = function(X, order, nknots=5, method="quantile") {
 # X = matrix of predictors
 # returnval = basis expansion of each column of X in b spline basis
-	Z = colnormalize(X)
+	Z = scale(X, center=TRUE, scale=TRUE)
 	d = ncol(X)
 	Xs = NULL
 	for(j in 1:d) {
