@@ -120,6 +120,25 @@ namespace FDRreg {
         return Rcpp::as<IntegerVector >(__result);
     }
 
+    inline NumericVector subsetter(NumericVector x, LogicalVector b) {
+        typedef SEXP(*Ptr_subsetter)(SEXP,SEXP);
+        static Ptr_subsetter p_subsetter = NULL;
+        if (p_subsetter == NULL) {
+            validateSignature("NumericVector(*subsetter)(NumericVector,LogicalVector)");
+            p_subsetter = (Ptr_subsetter)R_GetCCallable("FDRreg", "FDRreg_subsetter");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_subsetter(Rcpp::wrap(x), Rcpp::wrap(b));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<NumericVector >(__result);
+    }
+
 }
 
 #endif // __FDRreg_RcppExports_h__

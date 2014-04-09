@@ -10,6 +10,7 @@
 
 using namespace Rcpp;
 using namespace arma;
+using namespace FDRreg;
 
 template <typename T>
 T square( const T& x) {
@@ -58,14 +59,24 @@ inline bool check_interrupt() {
 }
 
 // simulate a single mean-zero multivariate normal vector
-mat rmvnormArma(mat sigma) {
+vec rmvnormArma(mat sigma) {
    int ncols = sigma.n_cols;
-   mat Y = randn(ncols, 1);
-   return chol(sigma) * Y;
+   vec z = arma::randn(ncols);
+   return chol(sigma) * z;
 }
 
 
 // Draw from a truncated gamma distribution
+
+// [[Rcpp::export]]
+IntegerVector toysample(int n, NumericVector weights) {
+  IntegerVector result(n);
+  for(int i=0; i<n; i++) {
+    result[i] = FDRreg::mysample(weights);
+  }
+  return result;
+}
+
 
 // [[Rcpp::export]]
 double rtgamma_once(double shape, double rate, double lb, double ub) {
@@ -93,26 +104,37 @@ NumericVector rdirichlet_once(NumericVector alpha) {
 
 
 // compute the inverse logit transform for an arma::vec
-inline colvec InvLogit(const arma::vec & x) {
+colvec InvLogit(arma::vec x) {
   int d = x.n_elem;
   colvec result(d);
   for(int i=0; i<d; i++) {
-    result[i] = 1.0/(1.0+exp(-x(i)));
+    result(i) = 1.0/(1.0+exp(-x(i)));
   }
   return result;
 }
 
+// // compute the inverse logit transform for an arma::vec
+// NumericVector sumby(NumericVector values, int nfactors, NumericVector factorid, IntegerVector exclude) {
+//   NumericVector mysums(nfactors, 0.0);
+//   for(
+//   colvec result(d);
+//   for(int i=0; i<d; i++) {
+//     result[i] = 1.0/(1.0+exp(-x(i)));
+//   }
+//   return result;
+// }
+
 // priorprob = vector of prior probabilities
 // mfull = vector of marginal likelihoods under global predictive (mixture of null + alternative)
 // mnull = vector of likelihoods under the null predictive
-colvec PriorToPostprobEBayes(const arma::vec & priorprob, NumericVector mfull, NumericVector mnull) {
+colvec PriorToPostprobEBayes(const arma::vec & priorprob, NumericVector mfull, NumericVector mnull, double p0) {
   int n = priorprob.n_elem;
   colvec postprob(n);
   for(int i=0; i<n; i++) {
-    if(mnull[i] >= mfull[i]) {
+    if(p0*mnull[i] >= mfull[i]) {
       postprob(i) = 0.0;
     } else {
-      postprob(i) =  1.0-(1.0-priorprob(i))*(mnull[i]/mfull[i]);
+      postprob(i) =  std::max(0.0, 1.0-(1.0-priorprob(i))*(mnull[i]/mfull[i]));
     }
   }
   return postprob;
@@ -126,8 +148,8 @@ colvec PriorToPostprobFullBayes(const arma::vec & priorprob, NumericVector m1, N
   colvec postprob(n);
   double f0, f1;
   for(int i=0; i<n; i++) {
-    f1 = priorprob[i] * m1[i];
-    f0 = (1.0-priorprob[i]) * m0[i];
+    f1 = priorprob(i) * m1[i];
+    f0 = (1.0-priorprob(i)) * m0[i];
     postprob(i) = f1/(f0+f1);
   }
   return postprob;
@@ -158,13 +180,15 @@ colvec rpg(colvec ntrials, colvec logodds) {
 
 
 // [[Rcpp::export]]
-SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVector MTot, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn) {
+SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVector MTot, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn, double p0, const arma::vec & betaguess) {
   // z is an n-vector of test statistics
   // X is a design matrix in the FDRR problem, including the intercept
   // M0 is a vector of marginal likelihoods, f_0(z), under the null hypothesis
   // MTot is a vector of marginal likelihoods, f(z), under the mixture of null and alternative
   // PriorPrecision and PriorMean are the parameters of the multivariate normal prior for the regression coefficients
   // nmc and nburn say how long to run the Markov chain
+
+  RNGScope scope;
 
   // Precompute what we can
   int ncases = X.n_rows;
@@ -184,22 +208,12 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
   int nsamples = nmc + nburn;
   mat PosteriorPrecision(nfeatures, nfeatures);
   mat PosteriorVariance(nfeatures, nfeatures);
-  colvec beta(nfeatures, fill::zeros);
+  colvec beta = betaguess;
   colvec logodds(ncases, fill::zeros);
   colvec priorprob(ncases);
   colvec postprob(ncases, fill::randu);
   colvec omega(ncases);
   colvec PosteriorMean(nfeatures, fill::zeros);
-  
-  // Initialize intercept at something reasonable
-  beta[0] = 0.0;
-  for(int i=0; i<ncases; i++) {
-    if(fabs(z[i])  > 2.0) {
-      beta[0] += 1.0;
-    }
-  }
-  beta[0] = beta[0]/ncases;
-  beta[0] = log(beta[0]/(1.0-beta[0]));
 
   // Main MCMC loop
   for(int i=0; i<nsamples; i++) {
@@ -218,8 +232,8 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
     // compute prior and posterior probability of alternative hypothesis
     logodds = X*beta;
     priorprob = InvLogit(logodds);
-    postprob = PriorToPostprobEBayes(priorprob, MTot, M0);
-    
+    postprob = PriorToPostprobEBayes(priorprob, MTot, M0, p0);
+
     // Draw Polya-Gamma latents, given current regression estimate of log odds
     omega = rpg(pgscale, logodds);
 
@@ -229,7 +243,7 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
     PosteriorMean = PosteriorVariance*(X.t() * (postprob - onehalf) + PriorPrecxMean);
     beta = PosteriorMean + rmvnormArma(PosteriorVariance);
     if(i >= nburn) {
-      betasave.row(i-nburn) = PosteriorMean.t();
+      betasave.row(i-nburn) = beta.t();
       priorprobsave = priorprobsave + priorprob;
       postprobsave = postprobsave + postprob;
     }
@@ -246,7 +260,7 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
 
 
 // [[Rcpp::export]]
-SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int ncomps, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn, NumericVector grid, NumericVector muguess) {
+SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVector M1, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn, const arma::vec & betaguess) {
   // z is an n-vector of test statistics
   // X is a design matrix in the FDRR problem, including the intercept
   // M0 is a vector of marginal likelihoods, f_0(z), under the null hypothesis
@@ -255,6 +269,7 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
   // nmc and nburn say how long to run the Markov chain
 
   GetRNGstate();
+  RNGScope scope;
 
   // Precompute what we can
   int ncases = X.n_rows;
@@ -269,45 +284,16 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
   mat betasave(nmc, nfeatures);
   colvec priorprobsave(ncases, fill::zeros);
   colvec postprobsave(ncases, fill::zeros);
-  colvec fthetasave(grid.size(), fill::zeros);
-  NumericMatrix weightssave(nmc, ncomps);
-  NumericMatrix musave(nmc, ncomps);
-  NumericMatrix varsave(nmc, ncomps);
 
   // Initialize MCMC
-  int nsamples = nmc + nburn;
   mat PosteriorPrecision(nfeatures, nfeatures);
   mat PosteriorVariance(nfeatures, nfeatures);
   colvec beta(nfeatures, fill::zeros);
-  colvec logodds(ncases, fill::zeros);
-  colvec priorprob(ncases);
-  colvec postprob(ncases, fill::randu);
   colvec omega(ncases);
   colvec PosteriorMean(nfeatures, fill::zeros);
-  IntegerVector Gamma(ncases);
-
-  // Mixture model parameters for alternative hypothesis
-  NumericVector comp_alpha(ncomps,1.0); // Dirichlet prior for mixing weifhts
-  NumericVector comp_means(ncomps, 0.0);
-  NumericVector comp_marginalvariance(ncomps, 2.0); // = tau2[k] + 1, integrating out the random mean
-  NumericVector comp_marginalsd = sqrt(comp_marginalvariance);
-  NumericVector comp_weights(ncomps, 1.0/ncomps);
-  NumericVector M1 = dnorm(z,0.0,3.0);
-
-  // Initialize intercept at something reasonable
-  beta[0] = 0.0;
-  for(int i=0; i<ncases; i++) {
-    if( fabs(z[i])  > 2.0 ) {
-      beta[0] += 1.0;
-    }
-  }
-  beta[0] = beta[0]/ncases;
-  beta[0] = log(beta[0]/(1-beta[0]));
-
-  // Initialize component means
-  comp_means = muguess;
 
   // Main MCMC loop
+  int nsamples = nmc + nburn;
   for(int i=0; i<nsamples; i++) {
 
     // Check for R user interrupt
@@ -321,55 +307,10 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
       }
     }
 
-
-    // compute prior and posterior probability of alternative hypothesis
-    logodds = X*beta;
-    priorprob = InvLogit(logodds);
-    postprob = PriorToPostprobFullBayes(priorprob, M1, M0);
+    colvec logodds = X*beta;
+    colvec priorprob = InvLogit(logodds);
+    colvec postprob = PriorToPostprobFullBayes(priorprob, M1, M0);
     
-    // Update mixture model for alternative hypothesis
-    for(int j=0; j<ncases; j++) {
-      Gamma[j] = Rf_rbinom(1.0, postprob[j]);
-    }
-
-    // Component-level sufficient statistics: just redeclare each pass through
-    NumericVector thisprob(ncomps, 0.0);
-    NumericVector sumsignals(ncomps, 0.0);
-    NumericVector nsignals(ncomps, 0.0);
-    NumericVector totsumsq(ncomps, 0.0);
-    NumericVector tval(ncomps, 0.0);
-    int whichcomponent=ncomps;
-    double muhat, muvar, tau2, resid;
-
-    // for the signals, draw the mixture component and collect the sufficient statistics
-    // Note that we don't actually need to save the model indicators
-    for(int j=0; j < ncases; j++) {
-      if(Gamma[j] > 0) {
-	tval = (comp_means - z[j])/comp_marginalsd;
-	thisprob = comp_weights*(dnorm(tval,0.0,1.0)/comp_marginalsd);
-	whichcomponent = FDRreg::mysample(thisprob);
-	nsignals[whichcomponent] += 1.0;
-	sumsignals[whichcomponent] += z[j];
-	resid = z[j] - comp_means[whichcomponent];
-	totsumsq[whichcomponent] += (resid*resid);
-      }
-    }
-
-    // Update component-level parameters using the sufficient stats we've aggregated
-    NumericVector eps = rnorm(ncomps, 0.0, 1.0);
-    for(int k=0; k<ncomps; k++) {
-      comp_marginalvariance[k] = 1.0/rtgamma_once( (1.0+nsignals[k])/2.0, (1.0 + totsumsq[k])/2.0, 0.0, 1.0);
-      tau2 =  comp_marginalvariance[k] - 1.0;
-      muvar = tau2/(nsignals[k] + tau2*0.01);
-      muhat = sumsignals[k]/(nsignals[k] + 0.01*tau2);
-      comp_means[k] = muhat + sqrt(muvar)*eps[k];
-    }
-    comp_marginalsd = sqrt(comp_marginalvariance);
-    comp_weights = rdirichlet_once(comp_alpha + nsignals);
-
-    // Recalculate marginal likelihood under mixture-of-normals alternative
-    M1 = FDRreg::dnormix(z, comp_weights, comp_means, comp_marginalvariance);
-
     // Draw Polya-Gamma latents, given current regression estimate of log odds
     omega = rpg(pgscale, logodds);
 
@@ -378,13 +319,11 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
     PosteriorVariance = inv(PosteriorPrecision);
     PosteriorMean = PosteriorVariance*(X.t() * (postprob - onehalf) + PriorPrecxMean);
     beta = PosteriorMean + rmvnormArma(PosteriorVariance);
+
     if(i >= nburn) {
-      betasave.row(i-nburn) = PosteriorMean.t();
+      betasave.row(i-nburn) = beta.t();
       priorprobsave = priorprobsave + priorprob;
       postprobsave = postprobsave + postprob;
-      weightssave(i-nburn,_) = comp_weights;
-      musave(i-nburn,_) = comp_means;
-      varsave(i-nburn,_) = comp_marginalvariance - 1.0;
     }
   }
   postprobsave = (1.0/nmc)*postprobsave;
@@ -394,13 +333,152 @@ SEXP BayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, int 
 
   return Rcpp::List::create(Rcpp::Named("priorprob")=priorprobsave,
 			    Rcpp::Named("postprob")=postprobsave,
-			    Rcpp::Named("betasave")=betasave,
-			    Rcpp::Named("musave")=musave,
-			    Rcpp::Named("weightssave")=weightssave,
-			    Rcpp::Named("varsave")=varsave
+			    Rcpp::Named("betasave")=betasave
+			    // Rcpp::Named("musave")=musave,
+			    // Rcpp::Named("weightssave")=weightssave,
+			    // Rcpp::Named("varsave")=varsave
 			    );
 }
 
 
+
+
+
+
+// [[Rcpp::export]]
+SEXP FullyBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVector M1, const arma::mat & PriorPrecision, const arma::vec & PriorMean, int nmc, int nburn, const arma::vec & betaguess) {
+  // z is an n-vector of test statistics
+  // X is a design matrix in the FDRR problem, including the intercept
+  // M0 is a vector of marginal likelihoods, f_0(z), under the null hypothesis
+  // ncomps the number of components you want in the Gaussian mixture model for the alternative
+  // PriorPrecision and PriorMean are the parameters of the multivariate normal prior for the regression coefficients
+  // nmc and nburn say how long to run the Markov chain
+
+  GetRNGstate();
+  RNGScope scope;
+
+  // Precompute what we can
+  int ncases = X.n_rows;
+  int nfeatures = X.n_cols;
+  colvec PriorPrecxMean = PriorPrecision * PriorMean;
+  colvec pgscale(ncases, fill::ones);
+  colvec onehalf(ncases);
+  onehalf.fill(0.5);
+  bool interrupt = false;
+
+  // Storage for draws
+  mat betasave(nmc, nfeatures);
+  colvec priorprobsave(ncases, fill::zeros);
+  colvec postprobsave(ncases, fill::zeros);
+
+  // NumericMatrix weightssave(nmc, ncomps);
+  // NumericMatrix musave(nmc, ncomps);
+  // NumericMatrix varsave(nmc, ncomps);
+
+  // Initialize MCMC
+  mat PosteriorPrecision(nfeatures, nfeatures);
+  mat PosteriorVariance(nfeatures, nfeatures);
+  colvec beta(nfeatures, fill::zeros);
+  colvec omega(ncases);
+  colvec PosteriorMean(nfeatures, fill::zeros);
+
+  // // Mixture model parameters for alternative hypothesis
+  // LogicalVector Gamma(ncases);
+  // NumericVector comp_alpha(ncomps,1.0); // Dirichlet prior for mixing weifhts
+  // NumericVector comp_means = muguess;
+  // NumericVector comp_tau2(ncomps, 1.0);
+  // NumericVector comp_marginalvariance = comp_tau2 + 1.0;
+  // NumericVector comp_weights(ncomps, 1.0);
+  // comp_weights = comp_weights/sum(comp_weights);
+  // NumericVector M1 = dnorm(z, 0.0, 5.0);
+  
+  // Main MCMC loop
+  int nsamples = nmc + nburn;
+  for(int i=0; i<nsamples; i++) {
+
+    // Check for R user interrupt
+    if(i % 100 == 0) {
+      if (check_interrupt()) {
+	interrupt = true;
+      }
+      // throw exception if interrupt occurred
+      if (interrupt) {
+	throw interrupt_exception("The FDRR model fit was interrupted.");
+      }
+    }
+
+    colvec logodds = X*beta;
+    colvec priorprob = InvLogit(logodds);
+    colvec postprob = PriorToPostprobFullBayes(priorprob, M1, M0);
+    
+    // Draw Polya-Gamma latents, given current regression estimate of log odds
+    omega = rpg(pgscale, logodds);
+
+    // Update regression parameters
+    PosteriorPrecision = X.t() * diagmat(omega) * X + PriorPrecision;
+    PosteriorVariance = inv(PosteriorPrecision);
+    PosteriorMean = PosteriorVariance*(X.t() * (postprob - onehalf) + PriorPrecxMean);
+    beta = PosteriorMean + rmvnormArma(PosteriorVariance);
+
+    // // Component-level sufficient statistics: just redeclare each pass through
+    // NumericVector sumsignals(ncomps, 0.0);
+    // NumericVector nsignals(ncomps, 0.0);
+    // NumericVector totsumsq(ncomps, 0.0);
+    // int whichcomponent;
+    // double muhat, muvar, resid;
+
+    // // Draw signal versus noise indicator
+    // NumericVector udraws = Rcpp::runif(ncases);
+    // //Gamma = (udraws <= Rcpp::as<NumericVector>(wrap(postprob)));
+    // for(int j=0; j<ncases; ++j) {
+    //   Gamma[i] = (udraws[i] < postprob(i)) ? TRUE : FALSE;
+    // }
+    
+    // NumericVector Signals = subsetter(z, Gamma);
+    // int totsignals = Signals.size();
+    // NumericVector sigma2(totsignals, 1.0);
+    // IntegerVector mycomps = FDRreg::draw_mixture_component(Signals, sigma2, comp_weights, comp_means, comp_tau2);
+
+    // // Update sufficient statistics for each component
+    // for(int j=0; j<Signals.size(); j++) {
+    //   nsignals[mycomps[j]] += 1.0;
+    //   sumsignals[mycomps[j]] += Signals[j];
+    //   resid = (Signals[j] - comp_means[mycomps[j]]);
+    //   totsumsq[mycomps[j]] += std::pow(resid, 2.0);
+    // }
+
+    // // Update component-level parameters using the sufficient stats we've aggregated
+    // NumericVector eps = rnorm(ncomps);
+    // for(int k=0; k < ncomps; k++) {
+    //   comp_marginalvariance[k] = 1.0/rtgamma_once( (nsignals[k] + 1.0)/2.0, (totsumsq[k] + 1.0)/2.0, 0.0, 1.0);
+    //   comp_tau2[k] =  comp_marginalvariance[k] - 1.0;
+    //   muvar = comp_tau2[k]/(nsignals[k] + comp_tau2[k]*0.01);
+    //   muhat = sumsignals[k]/(nsignals[k] + 0.01*comp_tau2[k]);
+    //   comp_means[k] = muhat + sqrt(muvar)*eps[k];
+    // }
+    // comp_weights = rdirichlet_once(comp_alpha + nsignals);
+
+    // // Recalculate marginal likelihood under mixture-of-normals alternative
+    // M1 = FDRreg::dnormix(z, comp_weights, comp_means, comp_marginalvariance);
+
+    if(i >= nburn) {
+      betasave.row(i-nburn) = beta.t();
+      priorprobsave = priorprobsave + priorprob;
+      postprobsave = postprobsave + postprob;
+    }
+  }
+  postprobsave = (1.0/nmc)*postprobsave;
+  priorprobsave = (1.0/nmc)*priorprobsave;
+
+  PutRNGstate();
+
+  return Rcpp::List::create(Rcpp::Named("priorprob")=priorprobsave,
+			    Rcpp::Named("postprob")=postprobsave,
+			    Rcpp::Named("betasave")=betasave
+			    // Rcpp::Named("musave")=musave,
+			    // Rcpp::Named("weightssave")=weightssave,
+			    // Rcpp::Named("varsave")=varsave
+			    );
+}
 
 

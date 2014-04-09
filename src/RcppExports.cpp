@@ -9,6 +9,22 @@
 
 using namespace Rcpp;
 
+// toysample
+IntegerVector toysample(int n, NumericVector weights);
+RcppExport SEXP FDRreg_toysample(SEXP nSEXP, SEXP weightsSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< int >::type n(nSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP );
+        IntegerVector __result = toysample(n, weights);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
 // rtgamma_once
 double rtgamma_once(double shape, double rate, double lb, double ub);
 RcppExport SEXP FDRreg_rtgamma_once(SEXP shapeSEXP, SEXP rateSEXP, SEXP lbSEXP, SEXP ubSEXP) {
@@ -43,8 +59,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // FDRregCPP
-SEXP FDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector MTot, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn);
-RcppExport SEXP FDRreg_FDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP MTotSEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP) {
+SEXP FDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector MTot, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, double p0, const arma::vec& betaguess);
+RcppExport SEXP FDRreg_FDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP MTotSEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP, SEXP p0SEXP, SEXP betaguessSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
@@ -57,16 +73,18 @@ BEGIN_RCPP
         Rcpp::traits::input_parameter< const arma::vec& >::type PriorMean(PriorMeanSEXP );
         Rcpp::traits::input_parameter< int >::type nmc(nmcSEXP );
         Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP );
-        SEXP __result = FDRregCPP(z, X, M0, MTot, PriorPrecision, PriorMean, nmc, nburn);
+        Rcpp::traits::input_parameter< double >::type p0(p0SEXP );
+        Rcpp::traits::input_parameter< const arma::vec& >::type betaguess(betaguessSEXP );
+        SEXP __result = FDRregCPP(z, X, M0, MTot, PriorPrecision, PriorMean, nmc, nburn, p0, betaguess);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);
     return __sexp_result;
 END_RCPP
 }
-// BayesFDRregCPP
-SEXP BayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, int ncomps, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, NumericVector grid, NumericVector muguess);
-RcppExport SEXP FDRreg_BayesFDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP ncompsSEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP, SEXP gridSEXP, SEXP muguessSEXP) {
+// EmpiricalBayesFDRregCPP
+SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector M1, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, const arma::vec& betaguess);
+RcppExport SEXP FDRreg_EmpiricalBayesFDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP M1SEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP, SEXP betaguessSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
@@ -74,14 +92,36 @@ BEGIN_RCPP
         Rcpp::traits::input_parameter< NumericVector >::type z(zSEXP );
         Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP );
         Rcpp::traits::input_parameter< NumericVector >::type M0(M0SEXP );
-        Rcpp::traits::input_parameter< int >::type ncomps(ncompsSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type M1(M1SEXP );
         Rcpp::traits::input_parameter< const arma::mat& >::type PriorPrecision(PriorPrecisionSEXP );
         Rcpp::traits::input_parameter< const arma::vec& >::type PriorMean(PriorMeanSEXP );
         Rcpp::traits::input_parameter< int >::type nmc(nmcSEXP );
         Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP );
-        Rcpp::traits::input_parameter< NumericVector >::type grid(gridSEXP );
-        Rcpp::traits::input_parameter< NumericVector >::type muguess(muguessSEXP );
-        SEXP __result = BayesFDRregCPP(z, X, M0, ncomps, PriorPrecision, PriorMean, nmc, nburn, grid, muguess);
+        Rcpp::traits::input_parameter< const arma::vec& >::type betaguess(betaguessSEXP );
+        SEXP __result = EmpiricalBayesFDRregCPP(z, X, M0, M1, PriorPrecision, PriorMean, nmc, nburn, betaguess);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// FullyBayesFDRregCPP
+SEXP FullyBayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector M1, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, const arma::vec& betaguess);
+RcppExport SEXP FDRreg_FullyBayesFDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, SEXP M1SEXP, SEXP PriorPrecisionSEXP, SEXP PriorMeanSEXP, SEXP nmcSEXP, SEXP nburnSEXP, SEXP betaguessSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< NumericVector >::type z(zSEXP );
+        Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type M0(M0SEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type M1(M1SEXP );
+        Rcpp::traits::input_parameter< const arma::mat& >::type PriorPrecision(PriorPrecisionSEXP );
+        Rcpp::traits::input_parameter< const arma::vec& >::type PriorMean(PriorMeanSEXP );
+        Rcpp::traits::input_parameter< int >::type nmc(nmcSEXP );
+        Rcpp::traits::input_parameter< int >::type nburn(nburnSEXP );
+        Rcpp::traits::input_parameter< const arma::vec& >::type betaguess(betaguessSEXP );
+        SEXP __result = FullyBayesFDRregCPP(z, X, M0, M1, PriorPrecision, PriorMean, nmc, nburn, betaguess);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);
@@ -272,6 +312,41 @@ RcppExport SEXP FDRreg_draw_mixture_component(SEXP ySEXP, SEXP sigma2SEXP, SEXP 
     UNPROTECT(1);
     return __result;
 }
+// subsetter
+NumericVector subsetter(NumericVector x, LogicalVector b);
+static SEXP FDRreg_subsetter_try(SEXP xSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP );
+        Rcpp::traits::input_parameter< LogicalVector >::type b(bSEXP );
+        NumericVector __result = subsetter(x, b);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP FDRreg_subsetter(SEXP xSEXP, SEXP bSEXP) {
+    SEXP __result;
+    {
+        Rcpp::RNGScope __rngScope;
+        __result = PROTECT(FDRreg_subsetter_try(xSEXP, bSEXP));
+    }
+    Rboolean __isInterrupt = Rf_inherits(__result, "interrupted-error");
+    if (__isInterrupt) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    Rboolean __isError = Rf_inherits(__result, "try-error");
+    if (__isError) {
+        SEXP __msgSEXP = Rf_asChar(__result);
+        UNPROTECT(1);
+        Rf_error(CHAR(__msgSEXP));
+    }
+    UNPROTECT(1);
+    return __result;
+}
 
 // validate (ensure exported C++ functions exist before calling them)
 static int FDRreg_RcppExport_validate(const char* sig) { 
@@ -282,6 +357,7 @@ static int FDRreg_RcppExport_validate(const char* sig) {
         signatures.insert("NumericVector(*marnormix)(NumericVector,NumericVector,NumericVector,NumericVector,NumericVector)");
         signatures.insert("NumericVector(*rnormix)(int,NumericVector,NumericVector,NumericVector)");
         signatures.insert("IntegerVector(*draw_mixture_component)(NumericVector,NumericVector,NumericVector,NumericVector,NumericVector)");
+        signatures.insert("NumericVector(*subsetter)(NumericVector,LogicalVector)");
     }
     return signatures.find(sig) != signatures.end();
 }
@@ -293,6 +369,7 @@ RcppExport SEXP FDRreg_RcppExport_registerCCallable() {
     R_RegisterCCallable("FDRreg", "FDRreg_marnormix", (DL_FUNC)FDRreg_marnormix_try);
     R_RegisterCCallable("FDRreg", "FDRreg_rnormix", (DL_FUNC)FDRreg_rnormix_try);
     R_RegisterCCallable("FDRreg", "FDRreg_draw_mixture_component", (DL_FUNC)FDRreg_draw_mixture_component_try);
+    R_RegisterCCallable("FDRreg", "FDRreg_subsetter", (DL_FUNC)FDRreg_subsetter_try);
     R_RegisterCCallable("FDRreg", "FDRreg_RcppExport_validate", (DL_FUNC)FDRreg_RcppExport_validate);
     return R_NilValue;
 }

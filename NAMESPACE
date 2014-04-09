@@ -7,5 +7,6 @@ importFrom(BayesLogit, rpg)
 importFrom(mvtnorm, rmvnorm)
 export(FDRreg, BayesFDRreg, plotFDR, efron, getFDR,
 	dnormix, marnormix, rnormix,
-	rtgamma_once, rdirichlet_once,
+	flogit, ilogit,
+	GetErrorRates, BenjaminiHochberg,
 	draw_mixture_component)
