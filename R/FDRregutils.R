@@ -99,25 +99,25 @@ getFDR = function(postprob) {
 	list(localfdr=localfdr, FDR=FDR)
 }
 
-plotFDR = function(fdrr, Q=0.1, showrug=TRUE, showfz=TRUE, showsub=TRUE) {
+plotFDR = function(fdrr, Q=0.1, showrug=TRUE, showfz=TRUE, showsub=TRUE, breaks=150) {
 	N = length(fdrr$z)
-	h1 = hist(fdrr$z, fdrr$breaks, plot=FALSE)
 	mytitle = paste0('')
 	par(mar=c(5,4,1,1))
+	h1 = hist(fdrr$z, breaks, plot=FALSE)
+	plot(h1, freq=FALSE, col='lightgrey', border='grey', main=mytitle, xlab='', ylab='', axes=FALSE, ylim=c(0, 1.05*max(h1$density)))
 	mysub = paste0('Grey bars: original z scores\nRed bars: fraction signals in each bin')
-	plot(h1, col='lightgrey', border='grey', main=mytitle, xlab='', ylab='', ylim=range(h1$counts), axes=FALSE)
 	axis(1, pos=0, tick=FALSE)
 	axis(2, tick=FALSE, las=1)
-	zcut = data.frame(prob=fdrr$postprob, bucket=cut(fdrr$z, fdrr$breaks))
+	zcut = data.frame(prob=fdrr$postprob, bucket=cut(fdrr$z, h1$breaks))
 	pmean = mosaic::maggregate(prob~bucket, data=zcut, FUN=mean)
 	pmean[is.na(pmean)] = 0
 	par(new=TRUE)
 	h2 = h1
-	h2$counts = h2$counts * pmean
-	plot(h2, col='red', border='grey', ylim=range(h1$counts), axes=FALSE, xlab='', ylab='', main='')
-	lines(fdrr$grid, fdrr$p0*(fdrr$grid.f0z/sum(fdrr$grid.f0z))*N, col='blue', lty='solid', lwd=1)
+	h2$density = h2$density * pmean
+	plot(h2, freq=FALSE, col='red', border='grey', axes=FALSE, xlab='', ylab='', main='', ylim=c(0, 1.05*max(h1$density)))
+	lines(fdrr$x_grid, fdrr$p0*fdrr$fnull_grid, col='blue', lty='solid', lwd=1)
 	if(showfz) {
-		lines(fdrr$grid, (fdrr$grid.fz/sum(fdrr$grid.fz))*N, col='black')
+		lines(fdrr$x_grid, fdrr$fmix_grid, col='black')
 		legend('topright', c(expression(f(z)), expression(p[0]*f[0](z))), lty=c('solid', 'solid'), col=c('black', 'blue'), bty='n')
 	}
 	else {
@@ -157,7 +157,7 @@ GetErrorRates = function(is_signal, is_finding) {
 }
 
 
-
+# EM deconvolution for a Gaussian mixture model for mu_i with N(mu_i,1) observations
 deconvolveEM = function(z, ncomps, rel.tol=1e-7, plotit=FALSE) {
 	N = length(z)
 	

@@ -9,22 +9,6 @@
 
 using namespace Rcpp;
 
-// toysample
-IntegerVector toysample(int n, NumericVector weights);
-RcppExport SEXP FDRreg_toysample(SEXP nSEXP, SEXP weightsSEXP) {
-BEGIN_RCPP
-    SEXP __sexp_result;
-    {
-        Rcpp::RNGScope __rngScope;
-        Rcpp::traits::input_parameter< int >::type n(nSEXP );
-        Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP );
-        IntegerVector __result = toysample(n, weights);
-        PROTECT(__sexp_result = Rcpp::wrap(__result));
-    }
-    UNPROTECT(1);
-    return __sexp_result;
-END_RCPP
-}
 // rtgamma_once
 double rtgamma_once(double shape, double rate, double lb, double ub);
 RcppExport SEXP FDRreg_rtgamma_once(SEXP shapeSEXP, SEXP rateSEXP, SEXP lbSEXP, SEXP ubSEXP) {
@@ -128,6 +112,75 @@ BEGIN_RCPP
     return __sexp_result;
 END_RCPP
 }
+// mysample
+int mysample(NumericVector probs);
+static SEXP FDRreg_mysample_try(SEXP probsSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP );
+        int __result = mysample(probs);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP FDRreg_mysample(SEXP probsSEXP) {
+    SEXP __result;
+    {
+        Rcpp::RNGScope __rngScope;
+        __result = PROTECT(FDRreg_mysample_try(probsSEXP));
+    }
+    Rboolean __isInterrupt = Rf_inherits(__result, "interrupted-error");
+    if (__isInterrupt) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    Rboolean __isError = Rf_inherits(__result, "try-error");
+    if (__isError) {
+        SEXP __msgSEXP = Rf_asChar(__result);
+        UNPROTECT(1);
+        Rf_error(CHAR(__msgSEXP));
+    }
+    UNPROTECT(1);
+    return __result;
+}
+// trapezoid
+double trapezoid(NumericVector x, NumericVector y);
+static SEXP FDRreg_trapezoid_try(SEXP xSEXP, SEXP ySEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP );
+        double __result = trapezoid(x, y);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP FDRreg_trapezoid(SEXP xSEXP, SEXP ySEXP) {
+    SEXP __result;
+    {
+        Rcpp::RNGScope __rngScope;
+        __result = PROTECT(FDRreg_trapezoid_try(xSEXP, ySEXP));
+    }
+    Rboolean __isInterrupt = Rf_inherits(__result, "interrupted-error");
+    if (__isInterrupt) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    Rboolean __isError = Rf_inherits(__result, "try-error");
+    if (__isError) {
+        SEXP __msgSEXP = Rf_asChar(__result);
+        UNPROTECT(1);
+        Rf_error(CHAR(__msgSEXP));
+    }
+    UNPROTECT(1);
+    return __result;
+}
 // dnormix
 NumericVector dnormix(NumericVector y, NumericVector weights, NumericVector mu, NumericVector tau2);
 static SEXP FDRreg_dnormix_try(SEXP ySEXP, SEXP weightsSEXP, SEXP muSEXP, SEXP tau2SEXP) {
@@ -150,40 +203,6 @@ RcppExport SEXP FDRreg_dnormix(SEXP ySEXP, SEXP weightsSEXP, SEXP muSEXP, SEXP t
     {
         Rcpp::RNGScope __rngScope;
         __result = PROTECT(FDRreg_dnormix_try(ySEXP, weightsSEXP, muSEXP, tau2SEXP));
-    }
-    Rboolean __isInterrupt = Rf_inherits(__result, "interrupted-error");
-    if (__isInterrupt) {
-        UNPROTECT(1);
-        Rf_onintr();
-    }
-    Rboolean __isError = Rf_inherits(__result, "try-error");
-    if (__isError) {
-        SEXP __msgSEXP = Rf_asChar(__result);
-        UNPROTECT(1);
-        Rf_error(CHAR(__msgSEXP));
-    }
-    UNPROTECT(1);
-    return __result;
-}
-// mysample
-int mysample(NumericVector probs);
-static SEXP FDRreg_mysample_try(SEXP probsSEXP) {
-BEGIN_RCPP
-    SEXP __sexp_result;
-    {
-        Rcpp::traits::input_parameter< NumericVector >::type probs(probsSEXP );
-        int __result = mysample(probs);
-        PROTECT(__sexp_result = Rcpp::wrap(__result));
-    }
-    UNPROTECT(1);
-    return __sexp_result;
-END_RCPP_RETURN_ERROR
-}
-RcppExport SEXP FDRreg_mysample(SEXP probsSEXP) {
-    SEXP __result;
-    {
-        Rcpp::RNGScope __rngScope;
-        __result = PROTECT(FDRreg_mysample_try(probsSEXP));
     }
     Rboolean __isInterrupt = Rf_inherits(__result, "interrupted-error");
     if (__isInterrupt) {
@@ -312,26 +331,31 @@ RcppExport SEXP FDRreg_draw_mixture_component(SEXP ySEXP, SEXP sigma2SEXP, SEXP 
     UNPROTECT(1);
     return __result;
 }
-// subsetter
-NumericVector subsetter(NumericVector x, LogicalVector b);
-static SEXP FDRreg_subsetter_try(SEXP xSEXP, SEXP bSEXP) {
+// PredictiveRecursionFDR
+List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector theta_guess, double nullprob = 0.95, double mu0 = 0.0, double sig0 = 1.0, double decay = -0.67);
+static SEXP FDRreg_PredictiveRecursionFDR_try(SEXP zSEXP, SEXP grid_xSEXP, SEXP theta_guessSEXP, SEXP nullprobSEXP, SEXP mu0SEXP, SEXP sig0SEXP, SEXP decaySEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
-        Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP );
-        Rcpp::traits::input_parameter< LogicalVector >::type b(bSEXP );
-        NumericVector __result = subsetter(x, b);
+        Rcpp::traits::input_parameter< NumericVector >::type z(zSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type grid_x(grid_xSEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type theta_guess(theta_guessSEXP );
+        Rcpp::traits::input_parameter< double >::type nullprob(nullprobSEXP );
+        Rcpp::traits::input_parameter< double >::type mu0(mu0SEXP );
+        Rcpp::traits::input_parameter< double >::type sig0(sig0SEXP );
+        Rcpp::traits::input_parameter< double >::type decay(decaySEXP );
+        List __result = PredictiveRecursionFDR(z, grid_x, theta_guess, nullprob, mu0, sig0, decay);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);
     return __sexp_result;
 END_RCPP_RETURN_ERROR
 }
-RcppExport SEXP FDRreg_subsetter(SEXP xSEXP, SEXP bSEXP) {
+RcppExport SEXP FDRreg_PredictiveRecursionFDR(SEXP zSEXP, SEXP grid_xSEXP, SEXP theta_guessSEXP, SEXP nullprobSEXP, SEXP mu0SEXP, SEXP sig0SEXP, SEXP decaySEXP) {
     SEXP __result;
     {
         Rcpp::RNGScope __rngScope;
-        __result = PROTECT(FDRreg_subsetter_try(xSEXP, bSEXP));
+        __result = PROTECT(FDRreg_PredictiveRecursionFDR_try(zSEXP, grid_xSEXP, theta_guessSEXP, nullprobSEXP, mu0SEXP, sig0SEXP, decaySEXP));
     }
     Rboolean __isInterrupt = Rf_inherits(__result, "interrupted-error");
     if (__isInterrupt) {
@@ -352,24 +376,26 @@ RcppExport SEXP FDRreg_subsetter(SEXP xSEXP, SEXP bSEXP) {
 static int FDRreg_RcppExport_validate(const char* sig) { 
     static std::set<std::string> signatures;
     if (signatures.empty()) {
-        signatures.insert("NumericVector(*dnormix)(NumericVector,NumericVector,NumericVector,NumericVector)");
         signatures.insert("int(*mysample)(NumericVector)");
+        signatures.insert("double(*trapezoid)(NumericVector,NumericVector)");
+        signatures.insert("NumericVector(*dnormix)(NumericVector,NumericVector,NumericVector,NumericVector)");
         signatures.insert("NumericVector(*marnormix)(NumericVector,NumericVector,NumericVector,NumericVector,NumericVector)");
         signatures.insert("NumericVector(*rnormix)(int,NumericVector,NumericVector,NumericVector)");
         signatures.insert("IntegerVector(*draw_mixture_component)(NumericVector,NumericVector,NumericVector,NumericVector,NumericVector)");
-        signatures.insert("NumericVector(*subsetter)(NumericVector,LogicalVector)");
+        signatures.insert("List(*PredictiveRecursionFDR)(NumericVector,NumericVector,NumericVector,double,double,double,double)");
     }
     return signatures.find(sig) != signatures.end();
 }
 
 // registerCCallable (register entry points for exported C++ functions)
 RcppExport SEXP FDRreg_RcppExport_registerCCallable() { 
-    R_RegisterCCallable("FDRreg", "FDRreg_dnormix", (DL_FUNC)FDRreg_dnormix_try);
     R_RegisterCCallable("FDRreg", "FDRreg_mysample", (DL_FUNC)FDRreg_mysample_try);
+    R_RegisterCCallable("FDRreg", "FDRreg_trapezoid", (DL_FUNC)FDRreg_trapezoid_try);
+    R_RegisterCCallable("FDRreg", "FDRreg_dnormix", (DL_FUNC)FDRreg_dnormix_try);
     R_RegisterCCallable("FDRreg", "FDRreg_marnormix", (DL_FUNC)FDRreg_marnormix_try);
     R_RegisterCCallable("FDRreg", "FDRreg_rnormix", (DL_FUNC)FDRreg_rnormix_try);
     R_RegisterCCallable("FDRreg", "FDRreg_draw_mixture_component", (DL_FUNC)FDRreg_draw_mixture_component_try);
-    R_RegisterCCallable("FDRreg", "FDRreg_subsetter", (DL_FUNC)FDRreg_subsetter_try);
+    R_RegisterCCallable("FDRreg", "FDRreg_PredictiveRecursionFDR", (DL_FUNC)FDRreg_PredictiveRecursionFDR_try);
     R_RegisterCCallable("FDRreg", "FDRreg_RcppExport_validate", (DL_FUNC)FDRreg_RcppExport_validate);
     return R_NilValue;
 }

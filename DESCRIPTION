@@ -1,7 +1,7 @@
 Package: FDRreg
 Type: Package
 Title: False discovery rate regression
-Version: 0.1
+Version: 0.2
 Date: 2014-02-24
 Author: James G. Scott, with contributions from Rob Kass and Jesse Windle
 Maintainer: James G. Scott <james.scott@mccombs.utexas.edu>

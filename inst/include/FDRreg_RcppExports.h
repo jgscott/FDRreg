@@ -25,25 +25,6 @@ namespace FDRreg {
         }
     }
 
-    inline NumericVector dnormix(NumericVector y, NumericVector weights, NumericVector mu, NumericVector tau2) {
-        typedef SEXP(*Ptr_dnormix)(SEXP,SEXP,SEXP,SEXP);
-        static Ptr_dnormix p_dnormix = NULL;
-        if (p_dnormix == NULL) {
-            validateSignature("NumericVector(*dnormix)(NumericVector,NumericVector,NumericVector,NumericVector)");
-            p_dnormix = (Ptr_dnormix)R_GetCCallable("FDRreg", "FDRreg_dnormix");
-        }
-        RObject __result;
-        {
-            RNGScope __rngScope;
-            __result = p_dnormix(Rcpp::wrap(y), Rcpp::wrap(weights), Rcpp::wrap(mu), Rcpp::wrap(tau2));
-        }
-        if (__result.inherits("interrupted-error"))
-            throw Rcpp::internal::InterruptedException();
-        if (__result.inherits("try-error"))
-            throw Rcpp::exception(as<std::string>(__result).c_str());
-        return Rcpp::as<NumericVector >(__result);
-    }
-
     inline int mysample(NumericVector probs) {
         typedef SEXP(*Ptr_mysample)(SEXP);
         static Ptr_mysample p_mysample = NULL;
@@ -61,6 +42,44 @@ namespace FDRreg {
         if (__result.inherits("try-error"))
             throw Rcpp::exception(as<std::string>(__result).c_str());
         return Rcpp::as<int >(__result);
+    }
+
+    inline double trapezoid(NumericVector x, NumericVector y) {
+        typedef SEXP(*Ptr_trapezoid)(SEXP,SEXP);
+        static Ptr_trapezoid p_trapezoid = NULL;
+        if (p_trapezoid == NULL) {
+            validateSignature("double(*trapezoid)(NumericVector,NumericVector)");
+            p_trapezoid = (Ptr_trapezoid)R_GetCCallable("FDRreg", "FDRreg_trapezoid");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_trapezoid(Rcpp::wrap(x), Rcpp::wrap(y));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<double >(__result);
+    }
+
+    inline NumericVector dnormix(NumericVector y, NumericVector weights, NumericVector mu, NumericVector tau2) {
+        typedef SEXP(*Ptr_dnormix)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_dnormix p_dnormix = NULL;
+        if (p_dnormix == NULL) {
+            validateSignature("NumericVector(*dnormix)(NumericVector,NumericVector,NumericVector,NumericVector)");
+            p_dnormix = (Ptr_dnormix)R_GetCCallable("FDRreg", "FDRreg_dnormix");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_dnormix(Rcpp::wrap(y), Rcpp::wrap(weights), Rcpp::wrap(mu), Rcpp::wrap(tau2));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<NumericVector >(__result);
     }
 
     inline NumericVector marnormix(NumericVector y, NumericVector sigma2, NumericVector weights, NumericVector mu, NumericVector tau2) {
@@ -120,23 +139,23 @@ namespace FDRreg {
         return Rcpp::as<IntegerVector >(__result);
     }
 
-    inline NumericVector subsetter(NumericVector x, LogicalVector b) {
-        typedef SEXP(*Ptr_subsetter)(SEXP,SEXP);
-        static Ptr_subsetter p_subsetter = NULL;
-        if (p_subsetter == NULL) {
-            validateSignature("NumericVector(*subsetter)(NumericVector,LogicalVector)");
-            p_subsetter = (Ptr_subsetter)R_GetCCallable("FDRreg", "FDRreg_subsetter");
+    inline List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector theta_guess, double nullprob = 0.95, double mu0 = 0.0, double sig0 = 1.0, double decay = -0.67) {
+        typedef SEXP(*Ptr_PredictiveRecursionFDR)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_PredictiveRecursionFDR p_PredictiveRecursionFDR = NULL;
+        if (p_PredictiveRecursionFDR == NULL) {
+            validateSignature("List(*PredictiveRecursionFDR)(NumericVector,NumericVector,NumericVector,double,double,double,double)");
+            p_PredictiveRecursionFDR = (Ptr_PredictiveRecursionFDR)R_GetCCallable("FDRreg", "FDRreg_PredictiveRecursionFDR");
         }
         RObject __result;
         {
             RNGScope __rngScope;
-            __result = p_subsetter(Rcpp::wrap(x), Rcpp::wrap(b));
+            __result = p_PredictiveRecursionFDR(Rcpp::wrap(z), Rcpp::wrap(grid_x), Rcpp::wrap(theta_guess), Rcpp::wrap(nullprob), Rcpp::wrap(mu0), Rcpp::wrap(sig0), Rcpp::wrap(decay));
         }
         if (__result.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();
         if (__result.inherits("try-error"))
             throw Rcpp::exception(as<std::string>(__result).c_str());
-        return Rcpp::as<NumericVector >(__result);
+        return Rcpp::as<List >(__result);
     }
 
 }

@@ -6,6 +6,60 @@
 
 using namespace Rcpp;
 
+// ***************************************
+// Basic utitilies used by the main functions
+// ***************************************
+
+// [[Rcpp::export]]
+int mysample(NumericVector probs) {
+  NumericVector csum = cumsum(probs);
+  double u = Rf_runif(0.0,csum[csum.size()-1]);
+  int k=0;
+  while(u > csum[k]) {
+    k++;
+  }
+  return k;
+}
+
+// [[Rcpp::export]]
+double trapezoid(NumericVector x, NumericVector y) {
+  int n = x.size();
+  double result = 0.0;
+  for(int i=1; i<n; i++) {
+    result += (x[i] - x[i-1])*(y[i] + y[i-1])/2.0;
+  }
+  return result;
+}
+
+
+// Dirk E.'s utility functions for subsetting
+
+const double flagval = __DBL_MIN__; // works
+
+// simple double value 'flagging' function
+inline double flag(double a, bool b) { return b ? a : flagval; }
+
+NumericVector subsetter(NumericVector x, LogicalVector b) {
+  // We use the flag() function to mark values of 'a' 
+  // for which 'b' is false with the 'flagval'
+  NumericVector a(clone(x));
+  std::transform(a.begin(), a.end(), b.begin(), a.begin(), flag);
+
+  // We use sugar's sum to compute how many true values to expect
+  NumericVector res = NumericVector(sum(b));
+
+  // And then copy the ones different from flagval from a into
+  // res using the remove_copy function from the STL
+  std::remove_copy(a.begin(), a.end(), res.begin(), flagval);
+  return res;    
+}
+
+
+// ***************************************
+// The main workhorse functions are below
+// ***************************************
+
+
 // [[Rcpp::export]]
 NumericVector dnormix(NumericVector y, NumericVector weights,  NumericVector mu, NumericVector tau2) {
   // y is an n-vectors of observations (y[i])
@@ -26,16 +80,6 @@ NumericVector dnormix(NumericVector y, NumericVector weights,  NumericVector mu,
   return density;
 }
 
-// [[Rcpp::export]]
-int mysample(NumericVector probs) {
-  NumericVector csum = cumsum(probs);
-  double u = Rf_runif(0.0,csum[csum.size()-1]);
-  int k=0;
-  while(u > csum[k]) {
-    k++;
-  }
-  return k;
-}
 
 // [[Rcpp::export]]
 NumericVector marnormix(NumericVector y, NumericVector sigma2, NumericVector weights,  NumericVector mu, NumericVector tau2) {
@@ -99,28 +143,55 @@ IntegerVector draw_mixture_component(NumericVector y, NumericVector sigma2, Nume
 }
 
 
-// Dirk E.'s utility functions for subsetting
-
-const double flagval = __DBL_MIN__; // works
-
-// simple double value 'flagging' function
-inline double flag(double a, bool b) { return b ? a : flagval; }
-
 // [[Rcpp::export]]
-NumericVector subsetter(NumericVector x, LogicalVector b) {
-  // We use the flag() function to mark values of 'a' 
-  // for which 'b' is false with the 'flagval'
-  NumericVector a(clone(x));
-  std::transform(a.begin(), a.end(), b.begin(), a.begin(), flag);
+List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector theta_guess, double nullprob=0.95, double mu0 = 0.0, double sig0 = 1.0, double decay = -0.67) {
+  // z: z statistics, usually replicated 5 or 10 times in a random order
+  // grid_x: a grid of points at which the alternative density will be approximated
+  // theta_guess: an initial guess for the sub-density under the alternative hypothesis
+  // nullprob: an initial guess for the fraction of null cases
+  // decay: the stochastic-approximation decay parameter, should be in (-1, -2/3)
 
-  // We use sugar's sum to compute how many true values to expect
-  NumericVector res = NumericVector(sum(b));
+  // Set-up
+  int n = z.size();
+  int gridsize = grid_x.size();
+  NumericVector theta_subdens(clone(theta_guess));
+  double pi0 = nullprob;
+  NumericVector joint1(gridsize);
+  NumericVector ftheta1(gridsize);
+  double m0, m1, mmix, cc;
 
-  // And then copy the ones different from flagval from a into
-  // res using the remove_copy function from the STL
-  std::remove_copy(a.begin(), a.end(), res.begin(), flagval);
-  return res;    
+  // Begin sweep through the data
+  for(int i=0; i<n; i++) {
+    if(i % 200 == 0) Rcpp::checkUserInterrupt();  
+    cc = pow(1.0+(double)i, decay);
+    joint1 = dnorm(grid_x, z[i], sig0) * theta_subdens;
+    m0 = pi0*R::dnorm(z[i], mu0, sig0, 0);
+    m1 = trapezoid(grid_x, joint1);
+    mmix = m0 + m1;
+    pi0 = (1-cc)*pi0 + cc*(m0/mmix);
+    ftheta1 = joint1/mmix;
+    theta_subdens = (1.0-cc)*theta_subdens + cc*ftheta1;
+  }
+
+  // Now calculate marginal distribution along the grid points
+  NumericVector y_mix(gridsize);
+  NumericVector y_signal(gridsize);
+  for(int j=0; j<gridsize; j++) {
+    joint1 = dnorm(grid_x, grid_x[j], sig0)*theta_subdens;
+    m0 = pi0*R::dnorm(grid_x[j], mu0, sig0, 0);
+    m1 = trapezoid(grid_x, joint1);
+    y_mix[j] = m0 + m1;
+    y_signal[j] = m1/(1.0-pi0);
+  }
+
+  return Rcpp::List::create(Rcpp::Named("grid_x")=grid_x,
+          Rcpp::Named("theta_subdens")=theta_subdens,
+          Rcpp::Named("pi0")=pi0,
+          Rcpp::Named("y_mix")=y_mix,
+          Rcpp::Named("y_signal")=y_signal
+          );
 }
+
 
 
 // // [[Rcpp::export]]

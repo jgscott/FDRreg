@@ -17,64 +17,52 @@ T square( const T& x) {
   return x * x;
 }
 
-// These check interrupt bits straight from RCPP without the OpenMP support
+// // These check interrupt bits straight from RCPP without the OpenMP support
 
-class interrupt_exception : public std::exception {
-public:
-    /**
-     * Constructor.
-     * @param[in] message A description of event that
-     *  caused this exception.
-     */
-    interrupt_exception(std::string message)
-	: detailed_message(message)
-    {};
+// class interrupt_exception : public std::exception {
+// public:
+//     /**
+//      * Constructor.
+//      * @param[in] message A description of event that
+//      *  caused this exception.
+//      */
+//     interrupt_exception(std::string message)
+// 	: detailed_message(message)
+//     {};
 
-    /**
-     * Virtual destructor. Needed to avoid "looser throw specification" errors.
-     */
-    virtual ~interrupt_exception() throw() {};
+//     /**
+//      * Virtual destructor. Needed to avoid "looser throw specification" errors.
+//      */
+//     virtual ~interrupt_exception() throw() {};
 
-    /**
-     * Obtain a description of the exception.
-     * @return Description.
-     */
-    virtual const char* what() const throw() {
-	return detailed_message.c_str();
-    }
+//     /**
+//      * Obtain a description of the exception.
+//      * @return Description.
+//      */
+//     virtual const char* what() const throw() {
+// 	return detailed_message.c_str();
+//     }
 
-    /**
-     * String with details on the error.
-     */
-    std::string detailed_message;
-};
+//     /**
+//      * String with details on the error.
+//      */
+//     std::string detailed_message;
+// };
 
 
-static inline void check_interrupt_impl(void* /*dummy*/) {
-    R_CheckUserInterrupt();
-}
+// static inline void check_interrupt_impl(void* /*dummy*/) {
+//     R_CheckUserInterrupt();
+// }
 
-inline bool check_interrupt() {
-    return (R_ToplevelExec(check_interrupt_impl, NULL) == FALSE);
-}
+// inline bool check_interrupt() {
+//     return (R_ToplevelExec(check_interrupt_impl, NULL) == FALSE);
+// }
 
 // simulate a single mean-zero multivariate normal vector
 vec rmvnormArma(mat sigma) {
    int ncols = sigma.n_cols;
    vec z = arma::randn(ncols);
    return chol(sigma) * z;
-}
-
-
-// Draw from a truncated gamma distribution
-
-// [[Rcpp::export]]
-IntegerVector toysample(int n, NumericVector weights) {
-  IntegerVector result(n);
-  for(int i=0; i<n; i++) {
-    result[i] = FDRreg::mysample(weights);
-  }
-  return result;
 }
 
 
@@ -90,7 +78,7 @@ double rtgamma_once(double shape, double rate, double lb, double ub) {
   return draw;
 }
 
-// Draw from a Dirichlet distribution
+// Draw from a Dirichlet distribution with parameter alpha
 // [[Rcpp::export]]
 NumericVector rdirichlet_once(NumericVector alpha) {
   int d = alpha.size();
@@ -113,16 +101,6 @@ colvec InvLogit(arma::vec x) {
   return result;
 }
 
-// // compute the inverse logit transform for an arma::vec
-// NumericVector sumby(NumericVector values, int nfactors, NumericVector factorid, IntegerVector exclude) {
-//   NumericVector mysums(nfactors, 0.0);
-//   for(
-//   colvec result(d);
-//   for(int i=0; i<d; i++) {
-//     result[i] = 1.0/(1.0+exp(-x(i)));
-//   }
-//   return result;
-// }
 
 // priorprob = vector of prior probabilities
 // mfull = vector of marginal likelihoods under global predictive (mixture of null + alternative)
@@ -197,7 +175,6 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
   colvec pgscale(ncases, fill::ones);
   colvec onehalf(ncases);
   onehalf.fill(0.5);
-  bool interrupt = false;
 
   // Storage for draws
   mat betasave(nmc, nfeatures);
@@ -216,18 +193,21 @@ SEXP FDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0, NumericVe
   colvec PosteriorMean(nfeatures, fill::zeros);
 
   // Main MCMC loop
+  // bool interrupt = false;
   for(int i=0; i<nsamples; i++) {
 
-    // Check for R user interrupt
-    if(i % 100 == 0) {
-      if (check_interrupt()) {
-	interrupt = true;
-      }
-      // throw exception if interrupt occurred
-      if (interrupt) {
-	throw interrupt_exception("The FDRR model fit was interrupted.");
-      }
-    }
+ //    // Check for R user interrupt
+ //    if(i % 100 == 0) {
+ //      if (check_interrupt()) {
+	// interrupt = true;
+ //      }
+ //      // throw exception if interrupt occurred
+ //      if (interrupt) {
+	// throw interrupt_exception("The FDRR model fit was interrupted.");
+ //      }
+ //    }
+
+    if(i % 100 == 0) Rcpp::checkUserInterrupt();
 
     // compute prior and posterior probability of alternative hypothesis
     logodds = X*beta;
@@ -264,7 +244,7 @@ SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector
   // z is an n-vector of test statistics
   // X is a design matrix in the FDRR problem, including the intercept
   // M0 is a vector of marginal likelihoods, f_0(z), under the null hypothesis
-  // ncomps the number of components you want in the Gaussian mixture model for the alternative
+  // M1 is a vector of marginal likelihoods, f_1(z), under the alternative hypothesis
   // PriorPrecision and PriorMean are the parameters of the multivariate normal prior for the regression coefficients
   // nmc and nburn say how long to run the Markov chain
 
@@ -278,8 +258,7 @@ SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector
   colvec pgscale(ncases, fill::ones);
   colvec onehalf(ncases);
   onehalf.fill(0.5);
-  bool interrupt = false;
-
+  
   // Storage for draws
   mat betasave(nmc, nfeatures);
   colvec priorprobsave(ncases, fill::zeros);
@@ -296,17 +275,20 @@ SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector
   int nsamples = nmc + nburn;
   for(int i=0; i<nsamples; i++) {
 
-    // Check for R user interrupt
-    if(i % 100 == 0) {
-      if (check_interrupt()) {
-	interrupt = true;
-      }
-      // throw exception if interrupt occurred
-      if (interrupt) {
-	throw interrupt_exception("The FDRR model fit was interrupted.");
-      }
-    }
+    // // Check for R user interrupt
+    // if(i % 100 == 0) {
+    //   if (check_interrupt()) {
+	   //     interrupt = true;
+    //   }
+    //   // throw exception if interrupt occurred
+    //   if (interrupt) {
+    //     throw interrupt_exception("The FDRR model fit was interrupted.");
+    //   }
+    // }
 
+    if(i % 100 == 0) Rcpp::checkUserInterrupt();
+
+    // Update logodds/prior/posterior probability from regression model, M0, and M1
     colvec logodds = X*beta;
     colvec priorprob = InvLogit(logodds);
     colvec postprob = PriorToPostprobFullBayes(priorprob, M1, M0);
@@ -334,9 +316,6 @@ SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector
   return Rcpp::List::create(Rcpp::Named("priorprob")=priorprobsave,
 			    Rcpp::Named("postprob")=postprobsave,
 			    Rcpp::Named("betasave")=betasave
-			    // Rcpp::Named("musave")=musave,
-			    // Rcpp::Named("weightssave")=weightssave,
-			    // Rcpp::Named("varsave")=varsave
 			    );
 }
 
@@ -364,7 +343,6 @@ SEXP FullyBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0,
   colvec pgscale(ncases, fill::ones);
   colvec onehalf(ncases);
   onehalf.fill(0.5);
-  bool interrupt = false;
 
   // Storage for draws
   mat betasave(nmc, nfeatures);
@@ -395,17 +373,6 @@ SEXP FullyBayesFDRregCPP(NumericVector z, const arma::mat & X, NumericVector M0,
   // Main MCMC loop
   int nsamples = nmc + nburn;
   for(int i=0; i<nsamples; i++) {
-
-    // Check for R user interrupt
-    if(i % 100 == 0) {
-      if (check_interrupt()) {
-	interrupt = true;
-      }
-      // throw exception if interrupt occurred
-      if (interrupt) {
-	throw interrupt_exception("The FDRR model fit was interrupted.");
-      }
-    }
 
     colvec logodds = X*beta;
     colvec priorprob = InvLogit(logodds);
