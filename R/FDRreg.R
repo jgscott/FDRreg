@@ -44,16 +44,17 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', control=list
 		# Iteratively refine estimate for beta
 		betaguess = rep(0,P)
 		travel=1
-		W = (1-p0)
+		W = 0.05
 		while(travel > 1e-6) {
-			PostProb = W*M1/(W*M1 + (1-W)*M0)
+			PostProb = pmax(0, pmin(1,W*M1/(W*M1 + (1-W)*M0)))
 			suppressWarnings(lm1 <- glm(PostProb ~ X-1, family=binomial))
 			newbeta = coef(lm1)
-			W = ilogit(X %*% newbeta)
+			logodds = pmin(10, pmax(-10, X %*% newbeta))
+			W = ilogit(logodds)
 			travel = sum(abs(betaguess-newbeta))
 			betaguess = newbeta
 		}
-		PostProb = W*M1/(W*M1 + (1-W)*M0)
+		PostProb = PostProb = pmax(0, pmin(1,W*M1/(W*M1 + (1-W)*M0)))
 		
 	} else if(method=='efron') {
 		
@@ -70,15 +71,16 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', control=list
 		travel=1
 		W = (1-p0)
 		while(travel > 1e-6) {
-			PostProb = pmax(0, 1 - (1-W)*M0/MTot)
+			PostProb = pmax(0, pmin(1, 1 - (1-W)*M0/MTot))
 			PostProb[nullcases] = 0
 			suppressWarnings(lm1 <- glm(PostProb ~ X-1, family=binomial))
 			newbeta = coef(lm1)
-			W = ilogit(X %*% newbeta)
+			logodds = pmin(10, pmax(-10, X %*% newbeta))
+			W = ilogit(logodds)
 			travel = sum(abs(betaguess-newbeta))
 			betaguess = newbeta
 		}
-		PostProb = pmax(0, 1 - (1-W)*M0/MTot)
+		PostProb = pmax(0, pmin(1, 1 - (1-W)*M0/MTot))
 		PostProb[nullcases] = 0
 		
 		x_grid = l1$mids
