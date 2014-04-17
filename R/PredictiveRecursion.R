@@ -26,14 +26,13 @@ prfdr = function(z, mu0=0.0, sig0=1.0, control=list()) {
 	}
 	
 	out1 = PredictiveRecursionFDR(zz, x_grid, theta_guess, nullprob=nullprob, mu0=mu0, sig0=sig0, decay=mycontrol$decay)
-	
-	# Use spline interpolation to get the density estimates at the observed points
-	ispl2 = splines::interpSpline(out1$y_signal ~ x_grid)
-	fsignal_z = predict(ispl2, z)$y
+	out2 = eval_pr_dens(z, x_grid, out1$theta_subdens, sig0)
+	# Use spline interpolation to get the mixture density estimates at the observed points
 	ispl3 = splines::interpSpline(out1$y_mix ~ x_grid)
 	fmix_z = predict(ispl3, z)$y
 	
-	out2 <- list(x_grid = x_grid, pi0 = out1$pi0, ftheta_grid = out1$theta_subdens, fsignal_grid = out1$y_signal,
-					fmix_grid = out1$y_mix, fsignal_z=fsignal_z, fmix_z=fmix_z)
+	out2 <- list(x_grid = x_grid, pi0 = out1$pi0, ftheta_grid = out1$theta_subdens, 
+				fsignal_grid = out1$y_signal, fmix_grid = out1$y_mix,
+				fsignal_z=out2$fsignal_z, fmix_z=fmix_z)
 	out2
 }

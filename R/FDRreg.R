@@ -9,7 +9,7 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', control=list
 	# Set up control structure
 	mycontrol = list(center=TRUE, scale=TRUE)
 	if(method=='pr') {
-		mycontrol$gridsize = 500
+		mycontrol$gridsize = 300
 		mycontrol$decay = -0.67
 		mycontrol$npasses = 10
 	} else if(method=='efron') {
@@ -22,40 +22,28 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', control=list
 	
 	# Matrix of regressors, centered and scaled as appropriate
 	N = length(z)
-	X = cbind(1,scale(features, center=mycontrol$center, scale=mycontrol$scale))
+	X = scale(features, center=mycontrol$center, scale=mycontrol$scale)
 	P = ncol(X)
 	
 	# Estimate the marginal density
 	if(method=='pr') {
 		
 		# For now we still use Efron's method to get the null density
+		# Want to use PR in the future
 		l1 = efron(z, nmids=150, df=15, nulltype=nulltype)
 		mu0 = l1$mu0
 		sig0 = l1$sig0
-		p0 = l1$p0
+
+		# Estimate the marginal via predictive recursion
+		prfit = prfdr(z, mu0, sig0, control=mycontrol)
+		p0 = prfit$pi0
 		M0 = dnorm(z, mu0, sig0)	
-		marginal = prfdr(z, mu0, sig0, control=mycontrol)
-		M1 = marginal$fsignal_z
-		x_grid = marginal$x_grid
-		fmix_grid = marginal$fmix_grid
+		M1 = pmax(prfit$fsignal_z, .Machine$double.eps)
+		x_grid = prfit$x_grid
+		fmix_grid = prfit$fmix_grid
 		fnull_grid = dnorm(x_grid, mu0, sig0)
-		fsignal_grid = marginal$fsignal_grid
-		
-		# Iteratively refine estimate for beta
-		betaguess = rep(0,P)
-		travel=1
-		W = 0.05
-		while(travel > 1e-6) {
-			PostProb = pmax(0, pmin(1,W*M1/(W*M1 + (1-W)*M0)))
-			suppressWarnings(lm1 <- glm(PostProb ~ X-1, family=binomial))
-			newbeta = coef(lm1)
-			logodds = pmin(10, pmax(-10, X %*% newbeta))
-			W = ilogit(logodds)
-			travel = sum(abs(betaguess-newbeta))
-			betaguess = newbeta
-		}
-		PostProb = PostProb = pmax(0, pmin(1,W*M1/(W*M1 + (1-W)*M0)))
-		
+		fsignal_grid = prfit$fsignal_grid
+		regressfit = fdrr_regress_pr(M0, M1, X, 1-p0)
 	} else if(method=='efron') {
 		
 		l1 = efron(z, nmids=mycontrol$gridsize, df=mycontrol$densknots, nulltype=nulltype)
@@ -63,42 +51,26 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', control=list
 		sig0 = l1$sig0
 		p0 = l1$p0
 		M0 = dnorm(z, mu0, sig0)
-		MTot = l1$fz
-		nullcases = which(p0*M0>MTot)
-
-		# Iteratively refine estimate for beta
-		betaguess = rep(0,P)
-		travel=1
-		W = (1-p0)
-		while(travel > 1e-6) {
-			PostProb = pmax(0, pmin(1, 1 - (1-W)*M0/MTot))
-			PostProb[nullcases] = 0
-			suppressWarnings(lm1 <- glm(PostProb ~ X-1, family=binomial))
-			newbeta = coef(lm1)
-			logodds = pmin(10, pmax(-10, X %*% newbeta))
-			W = ilogit(logodds)
-			travel = sum(abs(betaguess-newbeta))
-			betaguess = newbeta
-		}
-		PostProb = pmax(0, pmin(1, 1 - (1-W)*M0/MTot))
-		PostProb[nullcases] = 0
-		
+		MTot = l1$fz	
 		x_grid = l1$mids
 		fmix_grid = l1$zdens
 		fnull_grid = dnorm(x_grid, mu0, sig0)
 		fsignal_grid = NULL
+		regressfit = fdrr_regress_efron(M0, MTot, X, 1-p0,N)
 	}
-		
-	out2 = getFDR(PostProb)
-	list(z=z, localfdr=out2$localfdr, FDR=out2$FDR, X=X,
-			x_grid = x_grid, fmix_grid=fmix_grid, fnull_grid = fnull_grid, fsignal_grid = fsignal_grid, 
-			mu0=mu0, sig0=sig0, p0=p0, priorprob = W, postprob = PostProb, model=lm1
+	out2 = getFDR(regressfit$PostProb)
+	list(	z=z, X=X, localfdr=out2$localfdr, FDR=out2$FDR, 
+			x_grid = x_grid, fmix_grid=fmix_grid,
+			fnull_grid = fnull_grid, fsignal_grid = fsignal_grid, 
+			mu0=mu0, sig0=sig0, p0=p0, priorprob = regressfit$W,
+			postprob = regressfit$PostProb, model=regressfit$model
     )
 }
 
 
 
-BayesFDRreg = function(z, features, nulltype='theoretical', nmc=5000, nburn=1000, control=list(), ncomps=NULL, priorpars = NULL) {
+BayesFDRreg = function(z, features, nulltype='theoretical', nmc=5000, nburn=1000,
+	control=list(), ncomps=NULL, priorpars = NULL) {
 # Fully Bayesian version of false discovery rate regression
 # z = vector of z scores
 # features = design matrix of covariates, assumed NOT to have an intercept just as in vanilla lm()
@@ -141,7 +113,8 @@ BayesFDRreg = function(z, features, nulltype='theoretical', nmc=5000, nburn=1000
 				ncomps = ncomps+1
 			}
 		}
-		M1 = dnormix(z, emfit$weights[1:ncomps]/sum(emfit$weights[1:ncomps]), emfit$means[1:ncomps], emfit$vars[1:ncomps])
+		M1 = dnormix(z, emfit$weights[1:ncomps]/sum(emfit$weights[1:ncomps]),
+						emfit$means[1:ncomps], emfit$vars[1:ncomps])
 	} else 	M1 = dnorm(z, 0, 4)
 	
 	PriorPrecXMean = PriorPrec %*% PriorMean
@@ -181,8 +154,6 @@ BayesFDRreg = function(z, features, nulltype='theoretical', nmc=5000, nburn=1000
 		sumsignals = mosaic::maggregate(signals ~ factor(components, levels=1:ncomps), FUN='sum')
 		nsig = mosaic::maggregate(signals ~ factor(components, levels=1:ncomps), FUN='length')
 		tss = mosaic::maggregate((signals-comp_means[components])^2 ~ factor(components, levels=1:ncomps), FUN='sum')
-		
-		#print(c(comp_weights, comp_means, comp_variance))
 		
 		# Updates
 		for(k in 1:ncomps) myvar[k] = 1/rtgamma_once({nsig[k]+0.5}/2, {tss[k]+0.5}/2, 0, 1)

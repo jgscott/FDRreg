@@ -49,6 +49,10 @@ PredictiveRecursionFDR <- function(z, grid_x, theta_guess, nullprob = 0.95, mu0 
     .Call('FDRreg_PredictiveRecursionFDR', PACKAGE = 'FDRreg', z, grid_x, theta_guess, nullprob, mu0, sig0, decay)
 }
 
+eval_pr_dens <- function(z, grid_x, grid_theta, sig0) {
+    .Call('FDRreg_eval_pr_dens', PACKAGE = 'FDRreg', z, grid_x, grid_theta, sig0)
+}
+
 # Register entry points for exported C++ functions
 methods::setLoadAction(function(ns) {
     .Call('FDRreg_RcppExport_registerCCallable', PACKAGE = 'FDRreg')

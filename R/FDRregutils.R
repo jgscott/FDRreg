@@ -136,7 +136,7 @@ plotFDR = function(fdrr, Q=0.1, showrug=TRUE, showfz=TRUE, showsub=TRUE, breaks=
 BenjaminiHochberg = function(zscores, fdr_level) {
 # zscores is a vector of z scores
 # fdr_level is the desired level (e.g. 0.1) of control over FDR
-# returns a binary vector where 0=nofinding, 1=finding
+# returns a binary vector where 0=nofinding, 1=finding at given FDR level
 	N = length(zscores)
 	pval2 = 2*pmin(pnorm(zscores), 1- pnorm(zscores))
 	cuts = (1:N)*fdr_level/N
@@ -146,15 +146,126 @@ BenjaminiHochberg = function(zscores, fdr_level) {
 	0+{pval2 <= bhcut2}
 }
 
-# Utility function for extracting error rates from a confusion matrix
-GetErrorRates = function(is_signal, is_finding) {
-# is_signal is a binary vector saying which cases are signals
-# is_finding is a binary vector saying which cases are "findings" from a given procedure
-	confusion_matrix = table(is_signal, is_finding)
-	true_positive_rate = confusion_matrix[2,2]/(confusion_matrix[2,1] + confusion_matrix[2,2])
-	false_discovery_rate = confusion_matrix[1,2]/(confusion_matrix[1,2] + confusion_matrix[2,2])
+# Utility function for extracting error rates and a confusion matrix
+GetErrorRates = function(truth, guess) {
+# truth is a binary vector saying which cases are signals
+# guess is a binary vector saying which cases are "findings" from a given procedure
+	confusion_matrix = table(factor(truth, levels=c(0,1)), factor(guess, levels=c(0,1)))
+	
+	# Need to catch the corner case: no signals
+	if( sum(truth) == 0 ) {
+		true_positive_rate = 0
+	} else {
+		true_positive_rate = confusion_matrix[2,2]/sum(truth)
+	}
+
+	# Need to catch the corner case: no discoveries
+	if( sum(guess) == 0 )  {
+		false_discovery_rate = 0
+	} else {
+		false_discovery_rate = confusion_matrix[1,2]/sum(guess)
+	}
+
 	list(tpr = true_positive_rate, fdr = false_discovery_rate, confusion = confusion_matrix)
 }
+
+
+# Iteratively fit the regression piece of the PR-based FDR regression
+fdrr_regress_pr = function(M0, M1, X, W_initial, maxit=500, abstol = 1e-6) {
+	stopifnot( M0 > 0, M1 > 0 )
+	P = ncol(X)
+	result = tryCatch({
+
+		# Initialize the regression fit
+		travel=1
+		PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0)
+		suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial))
+		W = fitted(lm1)
+		PostProb = W*M1/(W*M1 + (1-W)*M0)
+		betaguess = coef(lm1)
+
+		# Iterate until convergence
+		passcounter = 0
+		while(travel > abstol && passcounter <= maxit) {
+			suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial, start = betaguess))
+			newbeta = coef(lm1)
+			W = fitted(lm1)
+			PostProb = W*M1/(W*M1 + (1-W)*M0)
+			travel = sum(abs(betaguess-newbeta))
+			betaguess = newbeta
+			passcounter = passcounter + 1
+		}
+		if(travel > abstol) {
+			mywarning = paste0('\nMaximum FDRR iteration (maxit) reached for PR method. ',
+						'Reverting to the no-covariates model. ', 
+						'Try re-running with a weaker tolerance or larger maxit.')
+			warning(mywarning, immediate.=FALSE)
+		}
+		list(PostProb = PostProb, W = W, model = lm1)
+	}, warning = function(war) {
+		print(war)
+		list(PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0), W = W_initial, model = NULL)
+	}, error = function(err) {
+		print(err)
+		print("An error was encountered in fitting the regression.  Reverting to the PR no-covariates model.")
+		list(PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0), W = W_initial, model = NULL)
+	}, finally = {
+		# No cleanup necessary
+	})
+	return(result)
+}
+
+# Iteratively fit the regression piece of the FDR regression using Efron's estimator
+fdrr_regress_efron = function(M0, MTot, X, W_initial, maxit=500, abstol = 1e-6) {
+	stopifnot( M0 > 0, MTot > 0 )
+	P = ncol(X)
+	result = tryCatch({
+
+		# Initialize the regression fit
+		travel=1
+		nullcases = which((1-W_initial)*M0>MTot)	
+		PostProb = pmax(0, pmin(1, 1 - (1-W_initial)*M0/MTot))
+		PostProb[nullcases] = 0
+		suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial))
+		W = fitted(lm1)
+		PostProb = pmax(0, pmin(1, 1 - (1-W)*M0/MTot))
+		PostProb[nullcases] = 0
+		betaguess = coef(lm1)
+
+
+		# Iteratively refine estimate for beta
+		travel=1
+		passcounter = 0
+		while(travel > abstol && passcounter <= maxit) {
+			suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial, start=betaguess))
+			newbeta = coef(lm1)
+			W = fitted(lm1)
+			PostProb = pmax(0, pmin(1, 1 - (1-W)*M0/MTot))
+			PostProb[nullcases] = 0
+			travel = sum(abs(betaguess-newbeta))
+			betaguess = newbeta
+			passcounter = passcounter + 1
+		}
+
+		if(travel > abstol) {
+			myerror = paste0('Maximum FDRR iteration (maxit) reached for Efron\'s method. ',
+						'Try re-running with a weaker tolerance or larger maxit.')
+			warning(mywarning, immediate. = TRUE)
+		}
+
+		list(PostProb = PostProb, W = W, model = lm1)
+
+	}, error = function(err) {
+		#print(err)
+		print("An error was encountered in fitting the regression.  Reverting to the Efron no-covariates model.")
+		list(PostProb = pmax(0, pmin(1, 1 - (1-W_initial)*M0/MTot)), W = W_initial, model = NULL)
+	}, finally = {
+		# No cleanup necessary
+	})
+	return(result)
+}
+
+
 
 
 # EM deconvolution for a Gaussian mixture model for mu_i with N(mu_i,1) observations

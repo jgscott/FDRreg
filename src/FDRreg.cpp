@@ -7,6 +7,7 @@
 #include "PolyaGamma.h"
 
 // Rcpp::depends(RcppArmadillo)
+// [[Rcpp::interfaces(r, cpp)]]
 
 using namespace Rcpp;
 using namespace arma;
@@ -16,47 +17,6 @@ template <typename T>
 T square( const T& x) {
   return x * x;
 }
-
-// // These check interrupt bits straight from RCPP without the OpenMP support
-
-// class interrupt_exception : public std::exception {
-// public:
-//     /**
-//      * Constructor.
-//      * @param[in] message A description of event that
-//      *  caused this exception.
-//      */
-//     interrupt_exception(std::string message)
-// 	: detailed_message(message)
-//     {};
-
-//     /**
-//      * Virtual destructor. Needed to avoid "looser throw specification" errors.
-//      */
-//     virtual ~interrupt_exception() throw() {};
-
-//     /**
-//      * Obtain a description of the exception.
-//      * @return Description.
-//      */
-//     virtual const char* what() const throw() {
-// 	return detailed_message.c_str();
-//     }
-
-//     /**
-//      * String with details on the error.
-//      */
-//     std::string detailed_message;
-// };
-
-
-// static inline void check_interrupt_impl(void* /*dummy*/) {
-//     R_CheckUserInterrupt();
-// }
-
-// inline bool check_interrupt() {
-//     return (R_ToplevelExec(check_interrupt_impl, NULL) == FALSE);
-// }
 
 // simulate a single mean-zero multivariate normal vector
 vec rmvnormArma(mat sigma) {

@@ -194,71 +194,28 @@ List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector
 
 
 
-// // [[Rcpp::export]]
-// List marmixEM(NumericVector y, int ncomps, double mu0, double sig0, double reltol) {
-//   // y is an n-vectors of observations (y[i])
-//   // k is the number of mixture components to be estimated
-//   int ncases = y.size();
+// [[Rcpp::export]]
+List eval_pr_dens(NumericVector z, NumericVector grid_x, NumericVector grid_theta, double sig0) {
+  // z: z statistics
+  // grid_x: a grid of points at which the alternative density is evaluated
+  // grid_theta: the alternative density at the corresponding grid of points
+  // this function will evaluate the predictive density of each z point using
 
-//   NumericVector weights(ncomps+1);
-//   NumericVector means = rnorm(ncomps+1);
-//   NumericVector vars(ncomps+1, 2.0);
-//   double p0 = 0.1;
-//   weights[ncomps] = p0;
-//   means[ncomps] = mu0;
-//   vars[ncomps] = sig0*sig0;
-//   for(int k=0; k<ncomps; k++) {
-//     weights[k] = (1.0-p0)/ncomps;
-//   }
+  // Set-up
+  int n = z.size();
+  int gridsize = grid_x.size();
+  NumericVector fsignal_z(n);
+  NumericVector joint1(gridsize);
+  double norm_constant = trapezoid(grid_x, grid_theta);
 
-//   // Initialize the means
-//   if(ncomps==1) means[0] = 0.0;
-//   else {
-//     means[0] = mean(subsetter(y, (y < -2.0)));
-//     means[1] = mean(subsetter(y, (y > 2.0)));
-//   }
-  
-//   NumericMatrix marglike(ncases, ncomps+1);
-//   marglike(_,ncomps) = dnorm(y, mu0, sig0);
-//   NumericMatrix postprob(ncases, ncomps+1);
+  // Begin sweep through the data, each time integrating by trap rule
+  for(int i=0; i<n; i++) {
+    if(i % 200 == 0) Rcpp::checkUserInterrupt();  
+    joint1 = dnorm(grid_x, z[i], sig0) * grid_theta;
+    fsignal_z[i] = trapezoid(grid_x, joint1)/norm_constant;
+  }
+  return Rcpp::List::create(Rcpp::Named("fsignal_z")=fsignal_z
+          );
+}
 
-//   double loglike = sum(log(dnormix(y, weights, means, vars+1.0)));
-//   double loglikenew = loglike;
-//   double rel_change;
-//   bool converged=FALSE;
-
-//   while(!converged) {
-
-//     // E step
-//     for(int k=0; k<ncomps; k++) {
-//       marglike(_,k) = dnorm(y, means[k], sqrt(vars[k]));
-//       postprob(_,k) = weights[k] * marglike(_,k);
-//     }
-//     postprob(_,ncomps) = weights[ncomps] * marglike(_,ncomps);
-//     for(int i=0; i<ncases;  i++) {
-//       postprob(i,_) = postprob(i,_)/sum( postprob(i,_) );
-//     }
-
-//     // M step
-//     for(int k=0; k <= ncomps; k++) {
-//       weights[k] = sum(postprob(_,k))/ncases;
-//     }
-
-//     for(int k=0; k < ncomps; k++) {
-//       means[k] = sum(y*postprob(_,k))/sum(postprob(_,k));
-//       NumericVector eps = (y - means[k]);
-//       vars[k] = sum( eps*eps*postprob(_,k) ) / sum(postprob(_,k));
-//       vars[k] = vars[k] > 1.0 ? vars[k] : 1.0;
-//     }
-
-//     loglikenew = sum(log(dnormix(y, weights, means, vars+1.0)));
-//     rel_change = fabs(loglikenew - loglike)/fabs(loglike + reltol);
-//     converged = (rel_change < reltol);
-//     loglike = loglikenew;
-//   }
-  
-//   return Rcpp::List::create(Rcpp::Named("weights") = weights,
-// 			    Rcpp::Named("means") = means,
-// 			    Rcpp::Named("vars") = vars );
-// }
 

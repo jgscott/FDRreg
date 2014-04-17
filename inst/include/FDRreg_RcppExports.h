@@ -25,6 +25,101 @@ namespace FDRreg {
         }
     }
 
+    inline double rtgamma_once(double shape, double rate, double lb, double ub) {
+        typedef SEXP(*Ptr_rtgamma_once)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rtgamma_once p_rtgamma_once = NULL;
+        if (p_rtgamma_once == NULL) {
+            validateSignature("double(*rtgamma_once)(double,double,double,double)");
+            p_rtgamma_once = (Ptr_rtgamma_once)R_GetCCallable("FDRreg", "FDRreg_rtgamma_once");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_rtgamma_once(Rcpp::wrap(shape), Rcpp::wrap(rate), Rcpp::wrap(lb), Rcpp::wrap(ub));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<double >(__result);
+    }
+
+    inline NumericVector rdirichlet_once(NumericVector alpha) {
+        typedef SEXP(*Ptr_rdirichlet_once)(SEXP);
+        static Ptr_rdirichlet_once p_rdirichlet_once = NULL;
+        if (p_rdirichlet_once == NULL) {
+            validateSignature("NumericVector(*rdirichlet_once)(NumericVector)");
+            p_rdirichlet_once = (Ptr_rdirichlet_once)R_GetCCallable("FDRreg", "FDRreg_rdirichlet_once");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_rdirichlet_once(Rcpp::wrap(alpha));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<NumericVector >(__result);
+    }
+
+    inline SEXP FDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector MTot, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, double p0, const arma::vec& betaguess) {
+        typedef SEXP(*Ptr_FDRregCPP)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_FDRregCPP p_FDRregCPP = NULL;
+        if (p_FDRregCPP == NULL) {
+            validateSignature("SEXP(*FDRregCPP)(NumericVector,const arma::mat&,NumericVector,NumericVector,const arma::mat&,const arma::vec&,int,int,double,const arma::vec&)");
+            p_FDRregCPP = (Ptr_FDRregCPP)R_GetCCallable("FDRreg", "FDRreg_FDRregCPP");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_FDRregCPP(Rcpp::wrap(z), Rcpp::wrap(X), Rcpp::wrap(M0), Rcpp::wrap(MTot), Rcpp::wrap(PriorPrecision), Rcpp::wrap(PriorMean), Rcpp::wrap(nmc), Rcpp::wrap(nburn), Rcpp::wrap(p0), Rcpp::wrap(betaguess));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<SEXP >(__result);
+    }
+
+    inline SEXP EmpiricalBayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector M1, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, const arma::vec& betaguess) {
+        typedef SEXP(*Ptr_EmpiricalBayesFDRregCPP)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_EmpiricalBayesFDRregCPP p_EmpiricalBayesFDRregCPP = NULL;
+        if (p_EmpiricalBayesFDRregCPP == NULL) {
+            validateSignature("SEXP(*EmpiricalBayesFDRregCPP)(NumericVector,const arma::mat&,NumericVector,NumericVector,const arma::mat&,const arma::vec&,int,int,const arma::vec&)");
+            p_EmpiricalBayesFDRregCPP = (Ptr_EmpiricalBayesFDRregCPP)R_GetCCallable("FDRreg", "FDRreg_EmpiricalBayesFDRregCPP");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_EmpiricalBayesFDRregCPP(Rcpp::wrap(z), Rcpp::wrap(X), Rcpp::wrap(M0), Rcpp::wrap(M1), Rcpp::wrap(PriorPrecision), Rcpp::wrap(PriorMean), Rcpp::wrap(nmc), Rcpp::wrap(nburn), Rcpp::wrap(betaguess));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<SEXP >(__result);
+    }
+
+    inline SEXP FullyBayesFDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector M1, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, const arma::vec& betaguess) {
+        typedef SEXP(*Ptr_FullyBayesFDRregCPP)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_FullyBayesFDRregCPP p_FullyBayesFDRregCPP = NULL;
+        if (p_FullyBayesFDRregCPP == NULL) {
+            validateSignature("SEXP(*FullyBayesFDRregCPP)(NumericVector,const arma::mat&,NumericVector,NumericVector,const arma::mat&,const arma::vec&,int,int,const arma::vec&)");
+            p_FullyBayesFDRregCPP = (Ptr_FullyBayesFDRregCPP)R_GetCCallable("FDRreg", "FDRreg_FullyBayesFDRregCPP");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_FullyBayesFDRregCPP(Rcpp::wrap(z), Rcpp::wrap(X), Rcpp::wrap(M0), Rcpp::wrap(M1), Rcpp::wrap(PriorPrecision), Rcpp::wrap(PriorMean), Rcpp::wrap(nmc), Rcpp::wrap(nburn), Rcpp::wrap(betaguess));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<SEXP >(__result);
+    }
+
     inline int mysample(NumericVector probs) {
         typedef SEXP(*Ptr_mysample)(SEXP);
         static Ptr_mysample p_mysample = NULL;
@@ -150,6 +245,25 @@ namespace FDRreg {
         {
             RNGScope __rngScope;
             __result = p_PredictiveRecursionFDR(Rcpp::wrap(z), Rcpp::wrap(grid_x), Rcpp::wrap(theta_guess), Rcpp::wrap(nullprob), Rcpp::wrap(mu0), Rcpp::wrap(sig0), Rcpp::wrap(decay));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<List >(__result);
+    }
+
+    inline List eval_pr_dens(NumericVector z, NumericVector grid_x, NumericVector grid_theta, double sig0) {
+        typedef SEXP(*Ptr_eval_pr_dens)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_eval_pr_dens p_eval_pr_dens = NULL;
+        if (p_eval_pr_dens == NULL) {
+            validateSignature("List(*eval_pr_dens)(NumericVector,NumericVector,NumericVector,double)");
+            p_eval_pr_dens = (Ptr_eval_pr_dens)R_GetCCallable("FDRreg", "FDRreg_eval_pr_dens");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_eval_pr_dens(Rcpp::wrap(z), Rcpp::wrap(grid_x), Rcpp::wrap(grid_theta), Rcpp::wrap(sig0));
         }
         if (__result.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();
