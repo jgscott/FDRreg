@@ -35,10 +35,16 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', control=list
 		sig0 = l1$sig0
 
 		# Estimate the marginal via predictive recursion
+		# Make sure that M1 is strictly positive across the whole domain
 		prfit = prfdr(z, mu0, sig0, control=mycontrol)
 		p0 = prfit$pi0
-		M0 = dnorm(z, mu0, sig0)	
-		M1 = pmax(prfit$fsignal_z, .Machine$double.eps)
+		M0 = dnorm(z, mu0, sig0)
+		M1 = prfit$fsignal_z
+		m1zeros = which(M1 < .Machine$double.eps)
+		if(length(m1zeros > 0)) {
+			M1[m1zeros] = min(M1[-m1zeros]) # substitute in the smallest nonzero value
+			M1 = pmax(M1, .Machine$double.eps) # shouldn't happen but just in case!
+		}
 		x_grid = prfit$x_grid
 		fmix_grid = prfit$fmix_grid
 		fnull_grid = dnorm(x_grid, mu0, sig0)

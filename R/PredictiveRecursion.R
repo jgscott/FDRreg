@@ -11,10 +11,12 @@ prfdr = function(z, mu0=0.0, sig0=1.0, control=list()) {
 	x_grid = seq(min(z), max(z), length=mycontrol$gridsize)
 	l1 = efron(z)
 	nullprob = l1$p0
-	weights = pmax(0, 1 - l1$p0*dnorm(z, mu0, sig0)/l1$fz)
-	d1 = density(z, weights=weights/sum(weights), 1)
-	ispl1 = splines::interpSpline(d1$y ~ d1$x)
-    theta_guess = predict(ispl1, x_grid)$y
+	# weights = pmax(0, 1 - l1$p0*dnorm(z, mu0, sig0)/l1$fz)
+	# d1 = density(z, weights=weights/sum(weights), 1)
+	# ispl1 = splines::interpSpline(d1$y ~ d1$x)
+ 	# theta_guess = predict(ispl1, x_grid)$y
+
+    theta_guess = 0.05+seq(-1,1, length=mycontrol$gridsize)^2
 	theta_guess = (1.0-nullprob)* theta_guess/trapezoid(x_grid, theta_guess)
 
 	# We sweep through the data npasses times in random order
@@ -25,7 +27,8 @@ prfdr = function(z, mu0=0.0, sig0=1.0, control=list()) {
 		zz[1:N + (k-1)*N] = sample(z)
 	}
 	
-	out1 = PredictiveRecursionFDR(zz, x_grid, theta_guess, nullprob=nullprob, mu0=mu0, sig0=sig0, decay=mycontrol$decay)
+	out1 = PredictiveRecursionFDR(zz, x_grid, theta_guess, nullprob=nullprob,
+		mu0=mu0, sig0=sig0, decay=mycontrol$decay)
 	out2 = eval_pr_dens(z, x_grid, out1$theta_subdens, sig0)
 	# Use spline interpolation to get the mixture density estimates at the observed points
 	ispl3 = splines::interpSpline(out1$y_mix ~ x_grid)
