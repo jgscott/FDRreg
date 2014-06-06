@@ -63,6 +63,44 @@ namespace FDRreg {
         return Rcpp::as<NumericVector >(__result);
     }
 
+    inline double SoftLogitLoss(arma::vec beta, arma::vec y, arma::mat X, double lambda = 0.0) {
+        typedef SEXP(*Ptr_SoftLogitLoss)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_SoftLogitLoss p_SoftLogitLoss = NULL;
+        if (p_SoftLogitLoss == NULL) {
+            validateSignature("double(*SoftLogitLoss)(arma::vec,arma::vec,arma::mat,double)");
+            p_SoftLogitLoss = (Ptr_SoftLogitLoss)R_GetCCallable("FDRreg", "FDRreg_SoftLogitLoss");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_SoftLogitLoss(Rcpp::wrap(beta), Rcpp::wrap(y), Rcpp::wrap(X), Rcpp::wrap(lambda));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<double >(__result);
+    }
+
+    inline arma::vec SoftLogitGradient(arma::vec beta, arma::vec y, arma::mat X, double lambda = 0.0) {
+        typedef SEXP(*Ptr_SoftLogitGradient)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_SoftLogitGradient p_SoftLogitGradient = NULL;
+        if (p_SoftLogitGradient == NULL) {
+            validateSignature("arma::vec(*SoftLogitGradient)(arma::vec,arma::vec,arma::mat,double)");
+            p_SoftLogitGradient = (Ptr_SoftLogitGradient)R_GetCCallable("FDRreg", "FDRreg_SoftLogitGradient");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_SoftLogitGradient(Rcpp::wrap(beta), Rcpp::wrap(y), Rcpp::wrap(X), Rcpp::wrap(lambda));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<arma::vec >(__result);
+    }
+
     inline SEXP FDRregCPP(NumericVector z, const arma::mat& X, NumericVector M0, NumericVector MTot, const arma::mat& PriorPrecision, const arma::vec& PriorMean, int nmc, int nburn, double p0, const arma::vec& betaguess) {
         typedef SEXP(*Ptr_FDRregCPP)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_FDRregCPP p_FDRregCPP = NULL;
@@ -234,17 +272,17 @@ namespace FDRreg {
         return Rcpp::as<IntegerVector >(__result);
     }
 
-    inline List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector theta_guess, double nullprob = 0.95, double mu0 = 0.0, double sig0 = 1.0, double decay = -0.67) {
-        typedef SEXP(*Ptr_PredictiveRecursionFDR)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+    inline List PredictiveRecursionFDR(NumericVector z, IntegerVector sweeporder, NumericVector grid_x, NumericVector theta_guess, double mu0 = 0.0, double sig0 = 1.0, double nullprob = 0.95, double decay = -0.67) {
+        typedef SEXP(*Ptr_PredictiveRecursionFDR)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_PredictiveRecursionFDR p_PredictiveRecursionFDR = NULL;
         if (p_PredictiveRecursionFDR == NULL) {
-            validateSignature("List(*PredictiveRecursionFDR)(NumericVector,NumericVector,NumericVector,double,double,double,double)");
+            validateSignature("List(*PredictiveRecursionFDR)(NumericVector,IntegerVector,NumericVector,NumericVector,double,double,double,double)");
             p_PredictiveRecursionFDR = (Ptr_PredictiveRecursionFDR)R_GetCCallable("FDRreg", "FDRreg_PredictiveRecursionFDR");
         }
         RObject __result;
         {
             RNGScope __rngScope;
-            __result = p_PredictiveRecursionFDR(Rcpp::wrap(z), Rcpp::wrap(grid_x), Rcpp::wrap(theta_guess), Rcpp::wrap(nullprob), Rcpp::wrap(mu0), Rcpp::wrap(sig0), Rcpp::wrap(decay));
+            __result = p_PredictiveRecursionFDR(Rcpp::wrap(z), Rcpp::wrap(sweeporder), Rcpp::wrap(grid_x), Rcpp::wrap(theta_guess), Rcpp::wrap(mu0), Rcpp::wrap(sig0), Rcpp::wrap(nullprob), Rcpp::wrap(decay));
         }
         if (__result.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();
@@ -253,17 +291,55 @@ namespace FDRreg {
         return Rcpp::as<List >(__result);
     }
 
-    inline List eval_pr_dens(NumericVector z, NumericVector grid_x, NumericVector grid_theta, double sig0) {
-        typedef SEXP(*Ptr_eval_pr_dens)(SEXP,SEXP,SEXP,SEXP);
+    inline List PredictiveRecursion_DifferentSigma(NumericVector z, double mu0, NumericVector sig0, IntegerVector sweeporder, NumericVector grid_x, NumericVector theta_guess, double nullprob = 0.95, double decay = -0.67) {
+        typedef SEXP(*Ptr_PredictiveRecursion_DifferentSigma)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_PredictiveRecursion_DifferentSigma p_PredictiveRecursion_DifferentSigma = NULL;
+        if (p_PredictiveRecursion_DifferentSigma == NULL) {
+            validateSignature("List(*PredictiveRecursion_DifferentSigma)(NumericVector,double,NumericVector,IntegerVector,NumericVector,NumericVector,double,double)");
+            p_PredictiveRecursion_DifferentSigma = (Ptr_PredictiveRecursion_DifferentSigma)R_GetCCallable("FDRreg", "FDRreg_PredictiveRecursion_DifferentSigma");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_PredictiveRecursion_DifferentSigma(Rcpp::wrap(z), Rcpp::wrap(mu0), Rcpp::wrap(sig0), Rcpp::wrap(sweeporder), Rcpp::wrap(grid_x), Rcpp::wrap(theta_guess), Rcpp::wrap(nullprob), Rcpp::wrap(decay));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<List >(__result);
+    }
+
+    inline NumericVector GaussianConvolution(NumericVector x, NumericVector fx, double sigma) {
+        typedef SEXP(*Ptr_GaussianConvolution)(SEXP,SEXP,SEXP);
+        static Ptr_GaussianConvolution p_GaussianConvolution = NULL;
+        if (p_GaussianConvolution == NULL) {
+            validateSignature("NumericVector(*GaussianConvolution)(NumericVector,NumericVector,double)");
+            p_GaussianConvolution = (Ptr_GaussianConvolution)R_GetCCallable("FDRreg", "FDRreg_GaussianConvolution");
+        }
+        RObject __result;
+        {
+            RNGScope __rngScope;
+            __result = p_GaussianConvolution(Rcpp::wrap(x), Rcpp::wrap(fx), Rcpp::wrap(sigma));
+        }
+        if (__result.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (__result.inherits("try-error"))
+            throw Rcpp::exception(as<std::string>(__result).c_str());
+        return Rcpp::as<NumericVector >(__result);
+    }
+
+    inline List eval_pr_dens(NumericVector z, double mu0, NumericVector sig0, NumericVector grid_x, NumericVector grid_theta) {
+        typedef SEXP(*Ptr_eval_pr_dens)(SEXP,SEXP,SEXP,SEXP,SEXP);
         static Ptr_eval_pr_dens p_eval_pr_dens = NULL;
         if (p_eval_pr_dens == NULL) {
-            validateSignature("List(*eval_pr_dens)(NumericVector,NumericVector,NumericVector,double)");
+            validateSignature("List(*eval_pr_dens)(NumericVector,double,NumericVector,NumericVector,NumericVector)");
             p_eval_pr_dens = (Ptr_eval_pr_dens)R_GetCCallable("FDRreg", "FDRreg_eval_pr_dens");
         }
         RObject __result;
         {
             RNGScope __rngScope;
-            __result = p_eval_pr_dens(Rcpp::wrap(z), Rcpp::wrap(grid_x), Rcpp::wrap(grid_theta), Rcpp::wrap(sig0));
+            __result = p_eval_pr_dens(Rcpp::wrap(z), Rcpp::wrap(mu0), Rcpp::wrap(sig0), Rcpp::wrap(grid_x), Rcpp::wrap(grid_theta));
         }
         if (__result.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

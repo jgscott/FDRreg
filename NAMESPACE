@@ -5,7 +5,7 @@ importFrom(splines, interpSpline, ns)
 importFrom(mosaic, maggregate)
 importFrom(BayesLogit, rpg)
 importFrom(mvtnorm, rmvnorm)
-export(FDRreg, BayesFDRreg, plotFDR, efron, getFDR, prfdr,
+export(FDRreg, BayesFDRreg, plotFDR, efron, getFDR, prfdr, prfdr_het,
 	dnormix, marnormix, rnormix, draw_mixture_component,
 	flogit, ilogit,
 	GetErrorRates, BenjaminiHochberg

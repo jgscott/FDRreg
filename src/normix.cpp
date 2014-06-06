@@ -144,7 +144,9 @@ IntegerVector draw_mixture_component(NumericVector y, NumericVector sigma2, Nume
 
 
 // [[Rcpp::export]]
-List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector theta_guess, double nullprob=0.95, double mu0 = 0.0, double sig0 = 1.0, double decay = -0.67) {
+List PredictiveRecursionFDR(NumericVector z, IntegerVector sweeporder,
+    NumericVector grid_x, NumericVector theta_guess,
+    double mu0 = 0.0, double sig0 = 1.0, double nullprob=0.95, double decay = -0.67) {
   // z: z statistics, usually replicated 5 or 10 times in a random order
   // grid_x: a grid of points at which the alternative density will be approximated
   // theta_guess: an initial guess for the sub-density under the alternative hypothesis
@@ -152,8 +154,8 @@ List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector
   // decay: the stochastic-approximation decay parameter, should be in (-1, -2/3)
 
   // Set-up
-  int n = z.size();
-  int gridsize = grid_x.size();
+  int n = sweeporder.size();
+  int k, gridsize = grid_x.size();
   NumericVector theta_subdens(clone(theta_guess));
   double pi0 = nullprob;
   NumericVector joint1(gridsize);
@@ -162,13 +164,14 @@ List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector
 
   // Begin sweep through the data
   for(int i=0; i<n; i++) {
+    k = sweeporder[i];
     if(i % 200 == 0) Rcpp::checkUserInterrupt();  
-    cc = pow(1.0+(double)i, decay);
-    joint1 = dnorm(grid_x, z[i], sig0) * theta_subdens;
-    m0 = pi0*R::dnorm(z[i], mu0, sig0, 0);
+    cc = pow(3.0+(double)i, decay);
+    joint1 = dnorm(grid_x, z[k]-mu0, sig0) * theta_subdens;
+    m0 = pi0*R::dnorm(z[k] - mu0, 0.0, sig0, 0);
     m1 = trapezoid(grid_x, joint1);
     mmix = m0 + m1;
-    pi0 = (1-cc)*pi0 + cc*(m0/mmix);
+    pi0 = (1.0-cc)*pi0 + cc*(m0/mmix);
     ftheta1 = joint1/mmix;
     theta_subdens = (1.0-cc)*theta_subdens + cc*ftheta1;
   }
@@ -177,7 +180,7 @@ List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector
   NumericVector y_mix(gridsize);
   NumericVector y_signal(gridsize);
   for(int j=0; j<gridsize; j++) {
-    joint1 = dnorm(grid_x, grid_x[j], sig0)*theta_subdens;
+    joint1 = dnorm(grid_x, grid_x[j] - mu0, sig0)*theta_subdens;
     m0 = pi0*R::dnorm(grid_x[j], mu0, sig0, 0);
     m1 = trapezoid(grid_x, joint1);
     y_mix[j] = m0 + m1;
@@ -195,11 +198,76 @@ List PredictiveRecursionFDR(NumericVector z, NumericVector grid_x, NumericVector
 
 
 // [[Rcpp::export]]
-List eval_pr_dens(NumericVector z, NumericVector grid_x, NumericVector grid_theta, double sig0) {
+List PredictiveRecursion_DifferentSigma(NumericVector z, double mu0, NumericVector sig0, IntegerVector sweeporder,
+    NumericVector grid_x, NumericVector theta_guess,
+    double nullprob=0.95, double decay = -0.67) {
+  // z: vector of observed data, vector of length N
+  // sig0: vector of standard errors se(z_i) under the null, of same length as z
+  // sweeporder: a vector of indices in [0...N-1] representing the order in which the z are processed
+  //     length(sweeporder) = Npasses*length(z)
+  // grid_x: a grid of points at which the alternative density will be approximated
+  // theta_guess: an initial guess for the sub-density under the alternative hypothesis
+  // nullprob: an initial guess for the fraction of null cases
+  // decay: the stochastic-approximation decay parameter, should be in (-1, -2/3)
+
+  // Set-up
+  int n = sweeporder.size();
+  int k, gridsize = grid_x.size();
+  NumericVector theta_subdens(clone(theta_guess));
+  double pi0 = nullprob;
+  NumericVector joint1(gridsize);
+  NumericVector ftheta1(gridsize);
+  double m0, m1, mmix, cc;
+
+  // Begin sweep through the data
+  for(int i=0; i<n; i++) {
+    if(i % 200 == 0) Rcpp::checkUserInterrupt();  
+    k = sweeporder[i];
+    cc = pow(3.0+(double)i, decay);
+    joint1 = dnorm(grid_x, z[k] - mu0, sig0[k]) * theta_subdens;
+    m0 = pi0*R::dnorm(z[k] - mu0, 0.0, sig0[k], 0);
+    m1 = trapezoid(grid_x, joint1);
+    mmix = m0 + m1;
+    pi0 = (1.0-cc)*pi0 + cc*(m0/mmix);
+    ftheta1 = joint1/mmix;
+    theta_subdens = (1.0-cc)*theta_subdens + cc*ftheta1;
+  }
+
+  return Rcpp::List::create(Rcpp::Named("grid_x")=grid_x,
+          Rcpp::Named("theta_subdens")=theta_subdens,
+          Rcpp::Named("pi0")=pi0
+          );
+}
+
+// [[Rcpp::export]]
+NumericVector GaussianConvolution(NumericVector x, NumericVector fx, double sigma) {
+  // x: vector of grid points
+  // fx: a vector of density evaluations f(x) at the grid points
+  // sigma: the standard deviation of the Gaussian with which f(x) is to be convolved
+  // this is a very naive O(n^2) Gaussian convolution suitable for small cheap problems
+  // Use something cleverer (e.g. FFT) for bigger problems!
+
+  // Set-up
+  int n = x.size();
+  NumericVector result(n ,0.0);
+
+  // Sweep through the grid points
+  for(int i=0; i<n; i++) {
+    result[i] += sum(fx*dnorm(x, x[i], sigma))/sum(dnorm(x,x[i],sigma));
+  }
+
+  return result;
+}
+
+
+// [[Rcpp::export]]
+List eval_pr_dens(NumericVector z, double mu0, NumericVector sig0, NumericVector grid_x, NumericVector grid_theta) {
   // z: z statistics
-  // grid_x: a grid of points at which the alternative density is evaluated
-  // grid_theta: the alternative density at the corresponding grid of points
-  // this function will evaluate the predictive density of each z point using
+  // mu0: mean of Gaussian
+  // sig0: vector of standard errors, se(z[i])
+  // grid_x: a grid of points at which the alternative density pi(theta) is evaluated
+  // grid_theta: the (unnormalized) mixing density pi(theta) at each point in grid_x
+  // this function will evaluate the predictive density of each z point
 
   // Set-up
   int n = z.size();
@@ -211,7 +279,7 @@ List eval_pr_dens(NumericVector z, NumericVector grid_x, NumericVector grid_thet
   // Begin sweep through the data, each time integrating by trap rule
   for(int i=0; i<n; i++) {
     if(i % 200 == 0) Rcpp::checkUserInterrupt();  
-    joint1 = dnorm(grid_x, z[i], sig0) * grid_theta;
+    joint1 = dnorm(grid_x, z[i] - mu0, sig0[i]) * grid_theta;
     fsignal_z[i] = trapezoid(grid_x, joint1)/norm_constant;
   }
   return Rcpp::List::create(Rcpp::Named("fsignal_z")=fsignal_z

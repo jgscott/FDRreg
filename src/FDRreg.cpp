@@ -61,6 +61,42 @@ colvec InvLogit(arma::vec x) {
   return result;
 }
 
+// returns the negative log likelihood of a "soft" logit model
+// beta: coefficient vector
+// X: design matrix
+// y: vector of expected binary outcomes in [0,1]
+// lambda: ridge term: lambda/2 ||beta||_2
+// [[Rcpp::export]]
+double SoftLogitLoss(arma::vec beta, arma::vec y, arma::mat X, double lambda=0.0) {
+	int n = y.n_elem;
+	arma::vec psi = X * beta;
+	double objective = 0.0;
+	for(int i=0; i<n; i++) {
+		objective += log(1.0+exp(psi(i))) - y(i)*psi(i);
+	}
+	objective += (lambda/2.0) * sum(arma::square(beta));
+	return objective;
+}
+
+// returns the gradient vector of a "soft" logit model
+// beta: coefficient vector
+// X: design matrix
+// y: vector of expected binary outcomes in [0,1]
+// [[Rcpp::export]]
+arma::vec SoftLogitGradient(arma::vec beta, arma::vec y, arma::mat X, double lambda=0.0) {
+	int n = y.n_elem;
+	int p = beta.n_elem;
+	arma::vec psi = X * beta;
+	double prob;
+	arma::vec gradient(p, fill::zeros);
+	for(int i=0; i<n; i++) {
+		prob = 1.0/(1.0+exp(-psi(i)));
+		gradient = gradient + (prob - y(i)) * ((X.row(i)).t());
+	}
+	gradient = gradient + lambda*beta;
+	return gradient;
+}
+
 
 // priorprob = vector of prior probabilities
 // mfull = vector of marginal likelihoods under global predictive (mixture of null + alternative)

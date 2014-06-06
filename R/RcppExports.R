@@ -9,6 +9,14 @@ rdirichlet_once <- function(alpha) {
     .Call('FDRreg_rdirichlet_once', PACKAGE = 'FDRreg', alpha)
 }
 
+SoftLogitLoss <- function(beta, y, X, lambda = 0.0) {
+    .Call('FDRreg_SoftLogitLoss', PACKAGE = 'FDRreg', beta, y, X, lambda)
+}
+
+SoftLogitGradient <- function(beta, y, X, lambda = 0.0) {
+    .Call('FDRreg_SoftLogitGradient', PACKAGE = 'FDRreg', beta, y, X, lambda)
+}
+
 FDRregCPP <- function(z, X, M0, MTot, PriorPrecision, PriorMean, nmc, nburn, p0, betaguess) {
     .Call('FDRreg_FDRregCPP', PACKAGE = 'FDRreg', z, X, M0, MTot, PriorPrecision, PriorMean, nmc, nburn, p0, betaguess)
 }
@@ -45,12 +53,20 @@ draw_mixture_component <- function(y, sigma2, weights, mu, tau2) {
     .Call('FDRreg_draw_mixture_component', PACKAGE = 'FDRreg', y, sigma2, weights, mu, tau2)
 }
 
-PredictiveRecursionFDR <- function(z, grid_x, theta_guess, nullprob = 0.95, mu0 = 0.0, sig0 = 1.0, decay = -0.67) {
-    .Call('FDRreg_PredictiveRecursionFDR', PACKAGE = 'FDRreg', z, grid_x, theta_guess, nullprob, mu0, sig0, decay)
+PredictiveRecursionFDR <- function(z, sweeporder, grid_x, theta_guess, mu0 = 0.0, sig0 = 1.0, nullprob = 0.95, decay = -0.67) {
+    .Call('FDRreg_PredictiveRecursionFDR', PACKAGE = 'FDRreg', z, sweeporder, grid_x, theta_guess, mu0, sig0, nullprob, decay)
 }
 
-eval_pr_dens <- function(z, grid_x, grid_theta, sig0) {
-    .Call('FDRreg_eval_pr_dens', PACKAGE = 'FDRreg', z, grid_x, grid_theta, sig0)
+PredictiveRecursion_DifferentSigma <- function(z, mu0, sig0, sweeporder, grid_x, theta_guess, nullprob = 0.95, decay = -0.67) {
+    .Call('FDRreg_PredictiveRecursion_DifferentSigma', PACKAGE = 'FDRreg', z, mu0, sig0, sweeporder, grid_x, theta_guess, nullprob, decay)
+}
+
+GaussianConvolution <- function(x, fx, sigma) {
+    .Call('FDRreg_GaussianConvolution', PACKAGE = 'FDRreg', x, fx, sigma)
+}
+
+eval_pr_dens <- function(z, mu0, sig0, grid_x, grid_theta) {
+    .Call('FDRreg_eval_pr_dens', PACKAGE = 'FDRreg', z, mu0, sig0, grid_x, grid_theta)
 }
 
 # Register entry points for exported C++ functions

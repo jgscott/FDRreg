@@ -10,25 +10,16 @@ rtgamma = function(n, a, b, lb, ub) {
 }
 
 
-make.bspline.matrix = function(X, order, nknots=5, method="quantile") {
-# X = matrix of predictors
-# returnval = basis expansion of each column of X in b spline basis
-	Z = scale(X, center=TRUE, scale=TRUE)
-	d = ncol(X)
-	Xs = NULL
-	for(j in 1:d) {
-		if(method=='quantile') {
-			argq = seq(0,1,length=nknots+2)
-			argvals = quantile(Z[,j], prob=argq)
-		}
-		else {
-			argvals = seq(min(Z[,j]), max(Z[,j]), length=nknots+2)
-		}
-		basisj = fda::create.bspline.basis(rangeval=range(argvals), breaks=argvals)
-		Xs = cbind(Xs, fda::eval.basis(Z[,j], basisj))
+SoftLogitFit = function(y, X, lambda=0.0, start=NULL) {
+	# X: design matrix assumed to include a column of 1's for an intercept
+	if(missing(start)) {
+		start = rep(0, ncol(X))
 	}
-	return(Xs)
+	mymax = optim(start, fn = SoftLogitLoss, gr = SoftLogitGradient,
+		method='BFGS', y=y, X = X, lambda=lambda, hessian=TRUE)
+	list(coef = mymax$par, value = mymax$value, hessian = mymax$hessian)
 }
+
 
 efron = function(z, nmids=150, pct=-0.01, pct0=0.25, df=10, nulltype='theoretical') {
 	# estimate f(z) and f_0(z) using Efron (2004)'s method
@@ -71,8 +62,12 @@ efron = function(z, nmids=150, pct=-0.01, pct0=0.25, df=10, nulltype='theoretica
 			zmax = z[which.max(l0)]
 			lm0 = lm(l0~I(z0-zmax) + I((z0-zmax)^2))
 			b0 = coef(lm0)
-			sig = as.numeric(sqrt(-1/{2*b0[3]}))
-			mu = as.numeric(-b0[2]/(2*b0[3]) + zmax)
+			sig = as.numeric(sqrt(-1.0/{2.0*b0[3]}))
+			mu = as.numeric(-b0[2]/(2.0*b0[3]) + zmax)
+			# lm0 = lm(l0 ~ z0 + I(z0^2))
+			# b0 = coef(lm0)
+			# sig = as.numeric(sqrt(-1/{2*b0[3]}))
+			# mu = as.numeric(b0[2] * sig^2)
 		} else {
 		# theoretical null
 			sig = 1
@@ -110,30 +105,28 @@ getFDR = function(postprob) {
 	list(localfdr=localfdr, FDR=FDR)
 }
 
-plotFDR = function(fdrr, Q=0.1, showrug=TRUE, showfz=TRUE, showsub=TRUE, breaks=150) {
+plotFDR = function(fdrr, Q=0.1, showrug=TRUE, showsub=TRUE, breaks=150, ...) {
 	N = length(fdrr$z)
 	mytitle = paste0('')
 	par(mar=c(5,4,1,1))
+	par(...)
 	h1 = hist(fdrr$z, breaks, plot=FALSE)
-	plot(h1, freq=FALSE, col='lightgrey', border='grey', main=mytitle, xlab='', ylab='', axes=FALSE, ylim=c(0, 1.05*max(h1$density)))
-	mysub = paste0('Grey bars: original z scores\nRed bars: fraction signals in each bin')
-	axis(1, pos=0, tick=FALSE)
-	axis(2, tick=FALSE, las=1)
+	plot(h1, freq=FALSE, col='lightgrey', border='grey',
+		main=mytitle, xlab='', ylab='', axes=FALSE, ylim=c(0, 1.05*max(h1$density)))
+	mysub = paste0('Grey bars: original z scores\nBlue bars: fraction signals in each bin')
+	axis(1, pos=0, tick=FALSE, cex.axis=0.9)
+	axis(2, tick=FALSE, las=1, cex.axis=0.9)
 	zcut = data.frame(prob=fdrr$postprob, bucket=cut(fdrr$z, h1$breaks))
 	pmean = mosaic::maggregate(prob~bucket, data=zcut, FUN=mean)
 	pmean[is.na(pmean)] = 0
 	par(new=TRUE)
 	h2 = h1
 	h2$density = h2$density * pmean
-	plot(h2, freq=FALSE, col='red', border='grey', axes=FALSE, xlab='', ylab='', main='', ylim=c(0, 1.05*max(h1$density)))
-	lines(fdrr$x_grid, fdrr$p0*fdrr$fnull_grid, col='blue', lty='solid', lwd=1)
-	if(showfz) {
-		lines(fdrr$x_grid, fdrr$fmix_grid, col='black')
-		legend('topright', c(expression(f(z)), expression(p[0]*f[0](z))), lty=c('solid', 'solid'), col=c('black', 'blue'), bty='n')
-	}
-	else {
-		legend('topright', c(expression(f[0](z))), lty=c('solid'), col=c('blue'), bty='n')	
-	}
+	plot(h2, freq=FALSE, col='blue', border='grey', axes=FALSE, xlab='', ylab='', main='', ylim=c(0, 1.05*max(h1$density)))
+	lines(fdrr$x_grid, fdrr$fmix_grid, col='black')
+	lines(fdrr$x_grid, fdrr$p0 * fdrr$f0_grid, col='red', lty='dotted', lwd=1)
+	legend('topright', c(expression(f(z)), expression(pi[0] %.% f[0](z))),
+		lty=c('solid', 'dotted'), col=c('black', 'red'), bty='n')
 	if(showrug) {
 		rug( fdrr$z[fdrr$FDR < Q], ticksize=0.03, col='black')
 		mysub = paste0(mysub, '\nBlack rug: discoveries at FDR = ', Q)
@@ -182,40 +175,67 @@ GetErrorRates = function(truth, guess) {
 
 
 # Iteratively fit the regression piece of the PR-based FDR regression
-fdrr_regress_pr = function(M0, M1, X, W_initial, maxit=500, abstol = 1e-6) {
+fdrr_regress_pr = function(M0, M1, X, W_initial, maxit=2500, abstol = 1e-6, lambda=0.01) {
 	stopifnot( M0 > 0, M1 > 0 )
 	P = ncol(X)
 	result = tryCatch({
 
+
+		# # Initialize the regression fit
+		# travel=1
+		# PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0)
+		# suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial))
+		# W = fitted(lm1)
+		# PostProb = W*M1/(W*M1 + (1-W)*M0)
+		# betaguess = coef(lm1)
+
+		# # Iterate until convergence
+		# passcounter = 0
+		# while(travel > abstol && passcounter <= maxit) {
+		# 	suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial, start = betaguess))
+		# 	newbeta = coef(lm1)
+		# 	W = fitted(lm1)
+		# 	PostProb = W*M1/(W*M1 + (1-W)*M0)
+		# 	travel = sum(abs(betaguess-newbeta))
+		# 	betaguess = newbeta
+		# 	passcounter = passcounter + 1
+		# }
+		# if(travel > abstol) {
+		# 	mywarning = paste0('\nMaximum FDRR iteration (maxit) reached for PR method. ',
+		# 				'Reverting to the no-covariates model. ', 
+		# 				'Try re-running with a weaker tolerance or larger maxit.')
+		# 	warning(mywarning, immediate.=FALSE)
+		# }
+		# list(PostProb = PostProb, W = W, model = lm1)
+
 		# Initialize the regression fit
 		travel=1
+		Xs = cbind(1,X)
 		PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0)
-		suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial))
-		W = fitted(lm1)
+		suppressWarnings(lm1 <- SoftLogitFit(PostProb, Xs, lambda=lambda))
+		betaguess = lm1$coef
+		W = ilogit(drop(Xs %*% betaguess))
 		PostProb = W*M1/(W*M1 + (1-W)*M0)
-		betaguess = coef(lm1)
+		oldval = lm1$value
 
 		# Iterate until convergence
 		passcounter = 0
 		while(travel > abstol && passcounter <= maxit) {
-			suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial, start = betaguess))
-			newbeta = coef(lm1)
-			W = fitted(lm1)
+			suppressWarnings(lm1 <- SoftLogitFit(PostProb, Xs, lambda=lambda, start=betaguess))
+			newval = lm1$value
+			travel = abs((oldval - newval)/(oldval + abstol))
+			oldval = newval
+			betaguess = lm1$coef
+			W = ilogit(drop(Xs %*% betaguess))
 			PostProb = W*M1/(W*M1 + (1-W)*M0)
-			travel = sum(abs(betaguess-newbeta))
-			betaguess = newbeta
 			passcounter = passcounter + 1
 		}
 		if(travel > abstol) {
 			mywarning = paste0('\nMaximum FDRR iteration (maxit) reached for PR method. ',
-						'Reverting to the no-covariates model. ', 
 						'Try re-running with a weaker tolerance or larger maxit.')
 			warning(mywarning, immediate.=FALSE)
 		}
 		list(PostProb = PostProb, W = W, model = lm1)
-	}, warning = function(war) {
-		print(war)
-		list(PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0), W = W_initial, model = NULL)
 	}, error = function(err) {
 		print(err)
 		print("An error was encountered in fitting the regression.  Reverting to the PR no-covariates model.")
