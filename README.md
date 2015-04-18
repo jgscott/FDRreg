@@ -9,7 +9,7 @@ This package implements false-discovery-rate regression (FDRR), in which auxilia
 To install the package in R, first install the devtools package, and then use the commands
 `````````
 library(devtools)
-install_github('jgscott/FDRreg')
+install_github('jgscott/FDRreg', subdir="R_pkg/FDRreg")
 `````````
 
 The method is described in the following paper:

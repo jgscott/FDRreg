@@ -96,7 +96,7 @@ curve(dnorm(x, 3, 0.5), add=TRUE)
 \references{
 James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass (2015).  False discovery rate regression: application to neural synchrony detection in primary visual cortex.    Journal of the American Statistical Association, DOI: 10.1080/01621459.2014.990973. arXiv:1307.3495 [stat.ME].
 
-R. Martin and S. Tokdar. A nonparametric empirical Bayes framework for large-scale multiple testing. Biostatistics, 13(3):427–39, 2012.
+R. Martin and S. Tokdar. A nonparametric empirical Bayes framework for large-scale multiple testing. Biostatistics, 13(3):427-39, 2012.
 
 }
 

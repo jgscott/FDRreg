@@ -24,6 +24,7 @@ BayesFDRreg(z, features, mu0=NULL, sig0 = NULL, empiricalnull=FALSE, nmc=5000, n
   \item{nmc}{The number of MCMC iterations saved.  Defaults to 5000.}
   \item{nburn}{The number of initial MCMC iterations discarded as burn-in.  Defaults to 1000.}
   \item{ncomps}{The number of mixture components used in the Gaussian mixture model of the alternative density f^1(z).  Defaults to NULL; see Details.}
+  \item{priorpars}{A list with elements PriorPrec (the prior precision matrix) and PriorMean (the prior mean vector).  If missing, the precision precision matrix is set 1/25 for every parameter, and the prior mean to 0.}
   \item{control}{A list of further options to the fitting algorithm; see Details below.}
 }
 
