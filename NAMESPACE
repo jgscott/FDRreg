@@ -3,4 +3,8 @@ importFrom(Rcpp, evalCpp)
 importFrom(fda, create.bspline.basis, eval.basis)
 importFrom(splines, interpSpline, ns)
 importFrom(mosaic, maggregate)
-export(FDRreg, plotFDR)
+importFrom(BayesLogit, rpg)
+importFrom(mvtnorm, rmvnorm)
+export(FDRreg, BayesFDRreg, plotFDR, prfdr, GetErrorRates, BenjaminiHochberg,
+	prfdr_het, efron, getFDR, dnormix, marnormix, rnormix, draw_mixture_component
+	)

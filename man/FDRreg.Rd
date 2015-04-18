@@ -9,54 +9,60 @@
   Estimate an empirical-Bayes false-discovery rate regression model for test statistics z and regressors X.
 }
 
+
+\usage{
+FDRreg(z, features, nulltype='theoretical', method='pr', stderr = NULL, control=list())
+}
+
+\arguments{
+  \item{z}{An N dimensional vector; z_i is the test statistic for observation i.}
+  \item{features}{An N x P dimensional design matrix; feature vector x_i for the ith observation is the ith row.  This is assumed not to have a column of ones representing an intercept.  Just like in R's own lm() and glm(), the intercept will be added by the fitting algorithm.  By default the features will be centered and scaled.  This can be modified using the 'control' flag.}
+  \item{nulltype}{What is the null hypothesis?  Right now the only options are Gaussian.  Choose 'empirical' for an empirical Gaussian null using Efron's central-matching method.  Choose 'theoretical' for a standard normal null (default).  Choose 'heteroscedastic' if each test statistic has a known standard error.  This last option can only be used if the 'stderr' flag is also specified.}
+  \item{method}{How is the distribution of alternative test statistics estimated?  Choose 'pr' for predictive recursion (default and strongly recommended.)  For legacy reasons, there is also an 'efron' option, which uses a Poisson GLM to estimate the overall marginal density.  This is not recommended, for reasons described in the FDR regression paper.}
+  \item{stderr}{Vector of standard errors.  Must be the same length as z, the vector of test statistics.  Defaults to 'NULL' in the case of a homoscedastic error model.}
+  \item{control}{A list of further options to the fitting algorithm; see Details below.}
+}
+
+
+\value{
+  \item{z}{The test statistics provided as the argument z.}
+  \item{X}{The design matrix used in the regression.  This will include an added column for an intercept and will reflect the requested centering and scaling of the original features matrix.}
+  \item{localfdr}{The vector of local false discovery rates (lfdr) corresponding to each element of z.  localfdr[i] is (1-p[i]). where p[i] is the fitted posterior probability that z[i] comes from the non-null (signal) population. Note localfdr is not necessarily monotonic in z, because the regression model allows the prior probability that z[i] is a signal to change with covariates X[i,].}
+  \item{FDR}{The corresponding vector of cut-level false discovery rates (FDR) for the elements of z. Used for extracting findings at a given FDR level.  FDR[i] is the estimated false discovery rate for the cohort of test statistics whose local fdr's are at least as small as localfdr[i] --- that is, the z[j]'s such that localfdr[j] <= localfdr[i].  If you want the findings that meet a certain FDR cutoff, use this return value.}
+  \item{x_grid}{equally-spaced midpoints of the bins used to estimate f_1(z), the density of test statistics under the alternative.}
+  \item{M0}{The estimated (or assumed) null density at each of the observed z scores; M0[i] corresponds to f^0(z[i]).}
+  \item{M1}{The estimated alternative density at each of the observed z scores; M1[i] corresponds to f^1(z[i]).}
+  \item{fmix_grid}{The estimated value of the overall marginal density f(z) at the grid points in x_grid.}
+  \item{f0_grid}{The estimated value of the null density f^0(z) at the grid points in x_grid.}
+  \item{f1_grid}{The estimated value of the alternative density f^1(z) at the grid points in x_grid.}
+  \item{mu0}{The mean of the null density used to fit the model.}
+  \item{sig0}{The standard deviation of the null density used to fit the model.}
+  \item{p0}{The estimated global null probability estimated by predictive recursion in the two-groups.  This is useful for comparison with the FDR regression results, because it assumes that the prior probability of being a signal does not change with covariates.}
+ \item{priorprob}{The estimated prior probability of being a signal for each observation z[i].  Here priorprob[i] = P(z[i] is non-null). }
+ \item{postprob}{The estimated posterior probabilities of being a signal each observation z[i]: postprob[i] = P(z[i] is non-null | data), and localfdr[i] = 1-postprob[i]. }
+ \item{model}{The fitted FDR regression model.  A list with the coefficients, the minimized value of the complete-data negative log likelihood, and the Hessian matrix of the complete-data negative log likelihood at the mode.}
+
+}
+
 \details{
 
   This model assumes that a z-statistic z arises from
 
   \deqn{ f(z_i) = w_i f^1(z) + (1-w_i) f^0(z) , }
 
-where f^1(z) and f^0(z) are the densities/marginal likelihoods under the alternative and null hypotheses, respectively, and where w_i is the prior probability that z_i is a signal (non-null case).  Efron's method is used to estimate f(z) nonparametrically; f^0(z) may either be the theoretical (standard normal) null, or an empirical null which can be estimated using the middle 25 percent of the data.  The prior probabilities w_i are estimated via logistic regression against covariates, using the Polya-Gamma Gibbs sampler of Polson, Scott, and Windle (JASA, 2013).
+where f^1(z) and f^0(z) are the densities/marginal likelihoods under the alternative and null hypotheses, respectively, and where w_i is the prior probability that z_i is a signal (non-null case).  Predictive recursion is used to estimate f^1(z) nonparametrically; f^0(z) may either be the theoretical (standard normal) null, or an empirical null which can be estimated using the middle 25 percent of the data.  The prior probabilities w_i are estimated via logistic regression against covariates using the expectation-maximization (EM) algorithm outlined in the FDR regression companion paper.
 
+
+  The control parameter can be a list with any of the following elements:
+  \itemize{
+    \item center, scale: Should the feature matrix be centered and scaled?  Both default to true.
+    \item gridsize:The number of grid points used to estimate the alternative density.  Default: 300.
+    \item decay: The learning rate in the prediction recursion algorithm for estmating f^1(z).  Analogous to the learning rate in stochastic gradient descent.  Default: -0.67.
+    \item npasses: The number of passes through the data forfitting f^1(z) by prediction recursion.  Each pass sweeps through the whole z vector in a random order.  Default: 10.
+    \item lambda: A small ridge-regression penalty is added to the regression model to stabilize the estimate.  Default: 0.01.  The default is a small amount of regularization when the covariates are standardized, equivalent to a Gaussian prior with variance 100.
+    \item nmids, densknots: Only used if method='efron'; this functionality is retained for legacy reasons and is not recommended for actual data analysis.  nmids: How many histogram midpoints are used in Efron's spline-based estimator of f(z).  Defaults to 150.  densknots: how many spline knots.  Defaults to 10.
+  }
 }
-
-\usage{
-FDRreg(z, covars, nulltype = 'empirical', type = 'linear', nmc = 10000, nburn = 500,
-nmids = 150, densknots = 10, regknots = 5)
-}
-
-\arguments{
-  \item{z}{An N dimensional vector; z_i is the test statistic for observation i.}
-  \item{covars}{An N x P dimensional design matrix; x_i is the ith row.  This is assumed not to have a column of ones representing an intercept; just like in lm() and glm(), this will be added by the fitting algorithm.}
-  \item{nulltype}{Choices are 'empirical' for an empirical null using Efron's central-matching method, or 'theoretical' for a standard normal null.}
-  \item{type}{Choices are 'linear' for a standard logistic regression, or 'additive' for an additive logit model, in which case each column of covars is expanded using a b-spline basis.}
-  \item{nmc}{The number of MCMC iterations saved.  Defaults to 10,000.}
-  \item{nburn}{The number of initial MCMC iterations discarded as burn-in.  Defaults to 500.}
-  \item{nmids}{How many bins should be used in the estimation of the marginal density f(z)?  Defaults to 150.}
- \item{densknots}{How many knots should be used to estimate the marginal density f(z) via spline-based Poisson regression? Defaults to 10; the function will warn you if it looks like you've used too few, using a simple deviance statistic.}
- \item{regknots}{Used only if type='additive'. How many knots should be used to estimate each partial regression function f_j(x_j)?  Defaults to 5.}
-}
-
-
-\value{
-  \item{z}{The test statistics provided as the argument z.}
-  \item{localfdr}{The corresponding vector of local false discovery rates (lfdr) for the elements of z.  localfdr[i] is simply 1 minus the fitted posterior probability that z[i] comes from the non-null (signal) population. It is important to remember that localfdr is not necessarily monotonic in z, because the regression model allows the prior probability that z[i] is a signal to change with covariates x[i].}
-  \item{FDR}{The corresponding vector of cut-level false discovery rates (FDR) for the elements of z. Used for extracting findings at a given FDR level.  FDR[i] is the estimated false discovery rate for the cohort of test statistics whose local fdr's are at least as small as localfdr[i] --- that is, the z[j]'s such that localfdr[j] <= localfdr[i].}
-  \item{X}{The design matrix used in the regression.  This will include an added column for an intercept, along with the spline basis expansion if type='additive'.}
-  \item{grid}{Length nmids: equally-spaced midpoints of the histogram bins used to estimate f(z) via Poisson spline regression.}
-  \item{breaks}{Length nmids: the breakpoints of the histogram used to estimate f(z) via Poisson spline regression.}
-  \item{grid.fz}{Length nmids: the estimated value of f(z) at the histogram midpoints.}
-  \item{grid.f0z}{Length nmids: the estimated value of f^0(z), the assumed (either theoretical or empirical) null density at the histogram midpoints.}
-  \item{grid.zcounts}{Length nmids: The number of z-scores that fell into each histogram bin.}
-  \item{dnull}{The estimated (or assumed) null density at each of the observed z scores; dnull[i] corresponds to z[i].}
-  \item{dmix}{The estimated marginal density f(z) at each point z[i].  This should look like a good, smooth fit to the histogram of z.}
-  \item{empirical.null}{A list with two members mu0 and sig0, representing the mean and standard deviation of the empirical null estimated using Efron's central-matching method.  Always returned, but only used if nulltype='empirical'.}
- \item{betasave}{A matrix of posterior draws.  Each row is a single posterior draw of the vector of regression coefficients corresponding to the columns of the returned X.}
- \item{priorprob}{The estimated prior probability of being a signa for each observation z_i.  Here priorprob[i] = P(z_i is non-null). }
- \item{postprob}{The estimated posterior probabilities of being a signal each observation z_i: postprob[i] = P(z_i is non-null | data), and localfdr[i] = 1-postprob[i]. }
- \item{fjindex}{A list of indices of length ncol(covars), where covars is the matrix of covariates you fed in.  Mainly useful if type='additive', in which case fjind[[j]] gives you a vector of indices telling you which columns of the returned X and betasave correspond to the basis expansion of the original design matrix covars[,j]. }
-
-}
-
 
 \examples{
 
@@ -83,37 +89,37 @@ curve(dnorm(x,0,1), add=TRUE, n=1001)
 
 \dontrun{
 # Fit the model
-fdr1 <- FDRreg(z, covars=X, nmc=2500, nburn=100, nmids=120, nulltype='theoretical')
-
+fdr1 <- FDRreg(z, X, nulltype='theoretical')
 
 # Show the empirical-Bayes estimate of the mixture density
 # and the findings at a specific FDR level
 Q = 0.1
-plotFDR(fdr1, Q=Q, showfz=TRUE)
+plotFDR(fdr1, Q=Q)
 
-# Posterior distribution of the intercept
-hist(fdr1$betasave[,1], 20)
+# Fitted model
+fdr1$model
 
 # Compare actual versus estimated prior probabilities of being a signal
-plot(wsuccess, fdr1$priorprob)
+plot(wsuccess, fdr1$priorprob, log='xy')
+abline(0,1)
 
 # Covariate effects
 plot(X[,1], log(fdr1$priorprob/{1-fdr1$priorprob}), ylab='Logit of prior probability')
 plot(X[,2], log(fdr1$priorprob/{1-fdr1$priorprob}), ylab='Logit of prior probability')
 
-# Local FDR
+# Plot local FDR versus z statistics
 plot(z, fdr1$localfdr, ylab='Local false-discovery rate')
 
 # Extract findings at level FDR = Q
 myfindings = which(fdr1$FDR <= Q)
+hist(z[myfindings], breaks=50, col='lightblue', border='blue')
+table(truth = gammatrue, guess = {fdr1$FDR <= Q})
 }
 
 }
 
 \references{
-J.G. Scott, R. Kelly, M.A. Smith, P. Zhou, and R.E. Kass (2013). False discovery rate regression: application to neural synchrony detection in primary visual cortex.  arXiv:1307.3495 [stat.ME].
-
-N.G. Polson, J.G. Scott, and J. Windle (2013.  Bayesian inference for logistic models using Polya-Gamma latent variables. Journal of the American Statistical Association (Theory and Methods) 108(504): 1339-49 (2013). arXiv:1205.0310 [stat.ME].
+James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass (2015).  False discovery rate regression: application to neural synchrony detection in primary visual cortex.    Journal of the American Statistical Association, DOI: 10.1080/01621459.2014.990973. arXiv:1307.3495 [stat.ME].
 
 Efron (2004). Large-scale simultaneous hypothesis testing: the choice of a null hypothesis. J. Amer. Statist. Assoc. 99, 96-104.
 

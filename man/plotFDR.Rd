@@ -14,20 +14,21 @@ It is important to remember that localfdr (and therefore global FDR) is not nece
 }
 
 \usage{
-plotFDR(fdrr, Q=0.1, showrug=TRUE, showfz=TRUE, showsub=TRUE) 
+plotFDR(fdrr, Q=0.1, showrug=TRUE, showsub=TRUE, breaks=150, ...)
 }
 
 \arguments{
   \item{fdrr}{A fitted model object from FDRreg.}
   \item{Q}{The desired level at which FDR should be controlled. Defaults to 0.1, or 10 percent.}
   \item{showrug}{Logical flag indicating whether the findings at the specified FDR level should be displayed in a rug plot beneath the histogram.  Defaults to TRUE.}
-  \item{showfz}{Logical flag indicating the fitted marginal density f(z) should be plotted.  Defaults to TRUE.}
   \item{showsub}{Logical flag indicating whether a subtitle should be displayed describing features of the plot.  Defaults to TRUE.}
+  \item{breaks}{Number of histogram breaks.  Defaults to 150.}
+  \item{...}{Optional arguments to par() that govern the look of the plot.}
 }
 
 
 \value{
-No return value.
+No return value; useful for side effect of plotting.
 }
 
 
@@ -56,11 +57,13 @@ curve(dnorm(x,0,1), add=TRUE, n=1001)
 
 \dontrun{
 # Fit the model
-fdr1 <- FDRreg(z, covars=X, nmc=2500, nburn=100, nmids=120, nulltype='theoretical')
+fdr1 <- FDRreg(z, X, nulltype='theoretical')
+
 # Show the empirical-Bayes estimate of the mixture density
 # and the findings at a specific FDR level
 Q = 0.1
-plotFDR(fdr1, Q=Q, showfz=TRUE)
+plotFDR(fdr1, Q=Q)
+
 }
 }
 

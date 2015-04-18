@@ -8,4 +8,4 @@ src/FDRreg.so
 src/RNG.o
 src/RRNG.o
 src/RcppExports.o
-normix.o
+*.o
