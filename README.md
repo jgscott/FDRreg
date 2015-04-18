@@ -1,7 +1,6 @@
-FDRreg
-======
+## FDRreg
 
-R package for false discovery rate regression (FDRR)
+R package for false discovery rate regression (FDRR), v0.2.
 
 Many approaches for multiple testing begin with the assumption that all tests in a given study should be combined into a global false-discovery-rate analysis. But this may be inappropriate for many of today's large-scale screening problems, where auxiliary information about each test is often available, and where a combined analysis can lead to poorly calibrated error rates within different subsets of the experiment.
 
@@ -13,4 +12,6 @@ library(devtools)
 install_github('jgscott/FDRreg')
 `````````
 
-The method is described in the paper 'False discovery rate regression: an application to neural synchrony detection in primary visual cortex', available as [arXiv:1307.3495 (stat.ME)](http://arxiv.org/abs/1307.3495).
+The method is described in the following paper:
+James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass (2015).  False discovery rate regression: application to neural synchrony detection in primary visual cortex.  Journal of the American Statistical Association, DOI: 10.1080/01621459.2014.990973. [arXiv:1307.3495](http://arxiv.org/abs/1307.3495) [stat.ME].
+

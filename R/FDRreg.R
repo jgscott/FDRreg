@@ -1,7 +1,7 @@
 FDRreg = function(z, features, nulltype='theoretical', method='pr', stderr = NULL, control=list()) {
 # False discovery rate regression
 # z = vector of z scores
-# X = design matrix of covariates, assumed NOT to have an intercept just as in vanilla lm()
+# features = design matrix of covariates, assumed NOT to have an intercept just as in vanilla lm()
 # nulltype = flag for what kind of null hypothesis to assume, theoretical/empirical/heteroscedastic
 	
 	stopifnot(any(method=='pr', method=='efron'))
@@ -187,24 +187,6 @@ BayesFDRreg = function(z, features, mu0=NULL, sig0 = NULL, empiricalnull=FALSE, 
 		
 		
 		### Update mixture of normals model
-		
-		# # Sufficient statistics
-		# signals = z[which(Gamma==1)]
-		# components = draw_mixture_component(signals, sig0, weights=comp_weights, mu = comp_means, tau2 = comp_variance) + 1
-		# sumsignals = mosaic::maggregate(signals ~ factor(components, levels=1:ncomps), FUN='sum')
-		# nsig = mosaic::maggregate(signals ~ factor(components, levels=1:ncomps), FUN='length')
-		# tss = mosaic::maggregate((signals-comp_means[components])^2 ~ factor(components, levels=1:ncomps), FUN='sum')
-		
-		# #print(rbind(nsig, sumsignals, tss))
-
-		# # Updates
-		# for(k in 1:ncomps) myvar[k] = 1.0/rtgamma_once({nsig[k]+2}/2, {tss[k]+2}/2, 0, 1-.Machine$double.eps)
-		# comp_variance = myvar - 1.0
-		# muvar = comp_variance/{nsig + comp_variance*0.01}
-		# muhat = sumsignals/{nsig + comp_variance*0.01}
-		# comp_means = rnorm(ncomps, muhat, sqrt(muvar))	
-		# comp_weights = rdirichlet_once(rep(1, ncomps) + nsig)
-
 		cases = which(Gamma==1)
 		signals = z[cases]
 		components = draw_mixture_component(signals, sig0[cases], weights=comp_weights, mu = comp_means, tau2 = comp_variance) + 1
@@ -223,7 +205,7 @@ BayesFDRreg = function(z, features, mu0=NULL, sig0 = NULL, empiricalnull=FALSE, 
 			mean_thetai = rep(0,ncomps)
 		}
 
-		# Updates
+		# Actual updates
 		for(k in 1:ncomps) comp_variance[k] = 1.0/rgamma(1, {nsig[k]+2}/2, rate={tss_thetai[k]+2}/2)
 		muvar = comp_variance/{nsig + comp_variance*0.1}
 		muhat = sum_thetai/{nsig + comp_variance*0.1}
@@ -253,7 +235,7 @@ BayesFDRreg = function(z, features, mu0=NULL, sig0 = NULL, empiricalnull=FALSE, 
 	out2 = getFDR(PostProbSave)
 		
 	mylist = list(z=z, localfdr=out2$localfdr, FDR=out2$FDR, X=X,
-			fnull_z = M0, fsignals_z = M1Save, mu0=mu0, sig0=sig0, p0=p0, ncomps=ncomps,
+			M0 = M0, M1 = M1Save, mu0=mu0, sig0=sig0, p0=p0, ncomps=ncomps,
 			priorprob = PriorProbSave, postprob = PostProbSave, 
 			coefficients = BetaSave, weights = WeightsSave, means=MuSave, vars = VarSave
     )

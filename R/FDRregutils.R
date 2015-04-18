@@ -10,8 +10,11 @@ rtgamma = function(n, a, b, lb, ub) {
 }
 
 
-SoftLogitFit = function(y, X, lambda=0.0, start=NULL) {
+SoftLogitFit = function(y, X, lambda=1e-6, start=NULL) {
+	# y: a vector of "fuzzy" ones and zeros, i.e. expected binary outcomes
 	# X: design matrix assumed to include a column of 1's for an intercept
+	# lambda is a ridge penalty parameter, defaulting to 1e-6
+	#	(basically no regularization, only there to ensure numerical stability)
 	if(missing(start)) {
 		start = rep(0, ncol(X))
 	}
@@ -74,12 +77,13 @@ efron = function(z, nmids=150, pct=-0.01, pct0=0.25, df=10, nulltype='theoretica
 			mu = 0
 		}
 		p0 = sum(fz[ind0])/sum(dnorm(z[ind0], mu, sig))
+		localfdr = pmin(1, p0*dnorm(z, mu, sig)/fz)
 		list(mids=mids, breaks=breaks, zcounts=zcounts, zdens=zdens,
-			z=z, fz=fz, mu0=mu, sig0=sig, p0=p0)
+			z=z, fz=fz, mu0=mu, sig0=sig, p0=p0, fdr=localfdr)
 	}, error = function(err) {
 		print(err)
 		list(mids=NULL, breaks=NULL, zcounts=NULL, zdens=NULL,
-			z=NULL, fz=NULL, mu0=NULL, sig0=NULL, p0=NULL)
+			z=NULL, fz=NULL, mu0=NULL, sig0=NULL, p0=NULL, fdr=NULL)
 	}, finally = {
 		# Nothing to clean up
 	})
@@ -180,34 +184,6 @@ fdrr_regress_pr = function(M0, M1, X, W_initial, maxit=2500, abstol = 1e-6, lamb
 	P = ncol(X)
 	result = tryCatch({
 
-
-		# # Initialize the regression fit
-		# travel=1
-		# PostProb = W_initial*M1/(W_initial*M1 + (1-W_initial)*M0)
-		# suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial))
-		# W = fitted(lm1)
-		# PostProb = W*M1/(W*M1 + (1-W)*M0)
-		# betaguess = coef(lm1)
-
-		# # Iterate until convergence
-		# passcounter = 0
-		# while(travel > abstol && passcounter <= maxit) {
-		# 	suppressWarnings(lm1 <- glm(PostProb ~ X, family=binomial, start = betaguess))
-		# 	newbeta = coef(lm1)
-		# 	W = fitted(lm1)
-		# 	PostProb = W*M1/(W*M1 + (1-W)*M0)
-		# 	travel = sum(abs(betaguess-newbeta))
-		# 	betaguess = newbeta
-		# 	passcounter = passcounter + 1
-		# }
-		# if(travel > abstol) {
-		# 	mywarning = paste0('\nMaximum FDRR iteration (maxit) reached for PR method. ',
-		# 				'Reverting to the no-covariates model. ', 
-		# 				'Try re-running with a weaker tolerance or larger maxit.')
-		# 	warning(mywarning, immediate.=FALSE)
-		# }
-		# list(PostProb = PostProb, W = W, model = lm1)
-
 		# Initialize the regression fit
 		travel=1
 		Xs = cbind(1,X)
@@ -218,9 +194,9 @@ fdrr_regress_pr = function(M0, M1, X, W_initial, maxit=2500, abstol = 1e-6, lamb
 		PostProb = W*M1/(W*M1 + (1-W)*M0)
 		oldval = lm1$value
 
-		# Iterate until convergence
+		# Iterate until convergence, each time with a warm start
 		passcounter = 0
-		while(travel > abstol && passcounter <= maxit) {
+		while(abs(travel/oldval) > abstol && passcounter <= maxit) {
 			suppressWarnings(lm1 <- SoftLogitFit(PostProb, Xs, lambda=lambda, start=betaguess))
 			newval = lm1$value
 			travel = abs((oldval - newval)/(oldval + abstol))
@@ -230,7 +206,7 @@ fdrr_regress_pr = function(M0, M1, X, W_initial, maxit=2500, abstol = 1e-6, lamb
 			PostProb = W*M1/(W*M1 + (1-W)*M0)
 			passcounter = passcounter + 1
 		}
-		if(travel > abstol) {
+		if(abs(travel/oldval) > abstol) {
 			mywarning = paste0('\nMaximum FDRR iteration (maxit) reached for PR method. ',
 						'Try re-running with a weaker tolerance or larger maxit.')
 			warning(mywarning, immediate.=FALSE)

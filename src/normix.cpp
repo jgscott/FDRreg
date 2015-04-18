@@ -1,3 +1,6 @@
+// Copyight James G. Scott 2014
+// Published under GPL3 licence
+
 #include <RcppArmadillo.h>
 #include <RcppArmadilloExtensions/sample.h>
 
@@ -30,30 +33,6 @@ double trapezoid(NumericVector x, NumericVector y) {
   }
   return result;
 }
-
-
-// Dirk E.'s utility functions for subsetting
-
-const double flagval = __DBL_MIN__; // works
-
-// simple double value 'flagging' function
-inline double flag(double a, bool b) { return b ? a : flagval; }
-
-NumericVector subsetter(NumericVector x, LogicalVector b) {
-  // We use the flag() function to mark values of 'a' 
-  // for which 'b' is false with the 'flagval'
-  NumericVector a(clone(x));
-  std::transform(a.begin(), a.end(), b.begin(), a.begin(), flag);
-
-  // We use sugar's sum to compute how many true values to expect
-  NumericVector res = NumericVector(sum(b));
-
-  // And then copy the ones different from flagval from a into
-  // res using the remove_copy function from the STL
-  std::remove_copy(a.begin(), a.end(), res.begin(), flagval);
-  return res;    
-}
-
 
 // ***************************************
 // The main workhorse functions are below
@@ -147,7 +126,8 @@ IntegerVector draw_mixture_component(NumericVector y, NumericVector sigma2, Nume
 List PredictiveRecursionFDR(NumericVector z, IntegerVector sweeporder,
     NumericVector grid_x, NumericVector theta_guess,
     double mu0 = 0.0, double sig0 = 1.0, double nullprob=0.95, double decay = -0.67) {
-  // z: z statistics, usually replicated 5 or 10 times in a random order
+  // z: z statistics
+  // sweeporder: an ordering of the points in z, usually 5-10 stacked permutations of 1 ... n
   // grid_x: a grid of points at which the alternative density will be approximated
   // theta_guess: an initial guess for the sub-density under the alternative hypothesis
   // nullprob: an initial guess for the fraction of null cases

@@ -5,17 +5,17 @@
 False discovery rate regression
 }
 \description{
-Tools for FDR problems, including false discovery rate regression.  Fits models whereby the local false discovery rate may depend upon covariates, either via a linear or additive logistic regression model.
+False discovery rate regression.  Fits a model for multiple testing whereby the local false discovery rate may depend upon covariates via a logistic regression.
 }
 \details{
 \tabular{ll}{
 Package: \tab FDRreg\cr
 Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2014-02-25\cr
+Version: \tab 0.2\cr
+Date: \tab 2015-04-18\cr
 License: \tab GPL (>=3) \cr
 }
-The workhouse function is FDRreg(z,X, ...), where z is an observed vector of z statistics, and X is a matrix of covariates.  Do not add a column of ones to X to get an intercept term; the function does that for you, just like R's base lm() and glm() functions.
+The workhouse function is FDRreg(z, features, ...), where z is an observed vector of z statistics, and features is a matrix of covariates.  Do not add a column of ones to features to get an intercept term; the function does that for you, just like R's base lm() and glm() functions.
 }
 \author{
 Author: James G. Scott, with contributions from Rob Kass and Jesse Windle.
@@ -23,14 +23,11 @@ Author: James G. Scott, with contributions from Rob Kass and Jesse Windle.
 Maintainer: James G. Scott  <james.scott@mccombs.utexas.edu>
 }
 
-\references{
-False discovery rate regression: application to neural synchrony detection in primary visual cortex.  James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass. arXiv:1307.3495 [stat.ME].
-}
-
 
 \keyword{ False discovery rates }
 
 \examples{
+
 library(FDRreg)
 
 # Simulated data
@@ -54,30 +51,42 @@ curve(dnorm(x,0,1), add=TRUE, n=1001)
 
 \dontrun{
 # Fit the model
-fdr1 <- FDRreg(z, covars=X, nmc=2500, nburn=100, nmids=120, nulltype='theoretical')
-
+fdr1 <- FDRreg(z, X, nulltype='theoretical')
 
 # Show the empirical-Bayes estimate of the mixture density
 # and the findings at a specific FDR level
 Q = 0.1
-plotFDR(fdr1, Q=Q, showfz=TRUE)
+plotFDR(fdr1, Q=Q)
 
-# Posterior distribution of the intercept
-hist(fdr1$betasave[,1], 20)
+# Fitted model
+fdr1$model
 
 # Compare actual versus estimated prior probabilities of being a signal
-plot(wsuccess, fdr1$priorprob)
+plot(wsuccess, fdr1$priorprob, log='xy')
+abline(0,1)
 
 # Covariate effects
 plot(X[,1], log(fdr1$priorprob/{1-fdr1$priorprob}), ylab='Logit of prior probability')
 plot(X[,2], log(fdr1$priorprob/{1-fdr1$priorprob}), ylab='Logit of prior probability')
 
-# Local FDR
+# Plot local FDR versus z statistics
 plot(z, fdr1$localfdr, ylab='Local false-discovery rate')
 
 # Extract findings at level FDR = Q
 myfindings = which(fdr1$FDR <= Q)
+hist(z[myfindings], breaks=50, col='lightblue', border='blue')
+table(truth = gammatrue, guess = {fdr1$FDR <= Q})
 }
 
 }
+
+\references{
+James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass (2015).  False discovery rate regression: application to neural synchrony detection in primary visual cortex.    Journal of the American Statistical Association, DOI: 10.1080/01621459.2014.990973. arXiv:1307.3495 [stat.ME].
+
+Efron (2004). Large-scale simultaneous hypothesis testing: the choice of a null hypothesis. J. Amer. Statist. Assoc. 99, 96-104.
+
+Efron (2005). Local false discovery rates. Preprint, Dept. of Statistics, Stanford University.
+
+}
+
 
