@@ -13,5 +13,7 @@ install_github('jgscott/FDRreg', subdir="R_pkg/")
 `````````
 
 The method is described in the following paper:
+
 James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass (2015).  False discovery rate regression: application to neural synchrony detection in primary visual cortex.  Journal of the American Statistical Association, DOI: 10.1080/01621459.2014.990973. [arXiv:1307.3495](http://arxiv.org/abs/1307.3495) [stat.ME].
 
+The simulation study from this paper is contained in `examples/simstudy.R` which should be run in batch mode because of its dependence on multicore facilities which can generate errors in interactive mode. 
