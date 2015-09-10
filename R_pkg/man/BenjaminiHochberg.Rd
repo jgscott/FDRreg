@@ -10,11 +10,11 @@
 }
 
 \usage{
-BenjaminiHochberg(zscores, fdr_level)
+GetErrorRates(truth, guess)
 }
 
 \arguments{
-  \item{zscores}{An N dimensional vector of z scores.}
+  \item{z}{An N dimensional vector of z scores.}
   \item{fdr_level}{The desired level of control over the false discovery rate.}
 }
 
@@ -24,7 +24,7 @@ BenjaminiHochberg(zscores, fdr_level)
 }
 
 \references{
-Y. Benjamini and Y. Hochberg. Controlling the false-discovery rate: a practical and powerful approach to multiple testing. Journal of the Royal Statistical Society, Series B, 57: 289-300, 1995.
+	Y. Benjamini and Y. Hochberg. Controlling the false-discovery rate: a practical and pow- erful approach to multiple testing. Journal of the Royal Statistical Society, Series B, 57: 289–300, 1995.
 }
 
 
