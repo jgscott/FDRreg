@@ -10,12 +10,12 @@ gamma_true = rbinom(N, 1, w_true)
 
 # What is the alternative hypothesis?
 sim_alt = function(n) {
-	# # unimodal
-	# rnorm(n, 0, 2)  
+	# unimodal
+	rnorm(n, 0, 2)  
 	
-	# bimodal
-	n1 = floor(n/2)
-	c(rnorm(n1, 3, 1), rnorm(n-n1, -3, 1))
+	# # bimodal
+	# n1 = floor(n/2)
+	# c(rnorm(n1, 3, 1), rnorm(n-n1, -3, 1))
 }
 
 theta_true = rep(0, N)
@@ -53,6 +53,34 @@ GetErrorRates(gamma_true, gamma1)
 
 # Compare z scores with posterior probabilities
 plot(z, postprob1)
+
+#####
+# Compare with simple empirical-Bayes estimate under Scott and Berger (2006) prior
+#####
+
+# objective function for empirical Bayes by marginal MLE
+target = function(parvec, y, sigma) {
+	w = 1/{1+exp(-parvec[1])}
+	tau2 = exp(parvec[2])
+	loglike = sum(log( (1-w)*dnorm(y, 0, sigma) + w*dnorm(y, 0, sqrt(tau2+sigma^2)) ))
+	-loglike
+}
+
+
+# Should not do especially well if truth is bimodal
+# But should estimate the unimodal case OK
+out3 = optim(c(0,0), target, y=y, sigma=sigma0)
+w_hat = 1/{1+exp(-out3$par[1])}
+tau = sqrt(exp(out3$par[2]))
+
+# Calculate posterior probabilities
+w0 = (1-w_hat)*dnorm(y, 0, sigma0)
+w1 = w_hat*dnorm(y, 0, sqrt(tau^2 + sigma0^2))
+postprob2 = w1/{w1+w0}
+FDR2 = getFDR(postprob2)
+gamma2 = 0 + {FDR2$FDR <= fdr_level}
+GetErrorRates(gamma_true, gamma2)
+
 
 
 #####
