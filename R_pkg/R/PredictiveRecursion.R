@@ -10,7 +10,8 @@ prfdr = function(z, mu0=0.0, sig0=1.0, control=list()) {
 	# Initial guess for alternative density and pi0
 	x_grid = seq(min(z), max(z), length=mycontrol$gridsize)
 	nullprob = 0.95
-	theta_guess = pmin(1, 0.1+seq(-2,2, length=mycontrol$gridsize)^2)
+	# theta_guess = pmin(1, 0.1+seq(-2,2, length=mycontrol$gridsize)^2)
+	theta_guess = rep(1, length(x_grid))
 	theta_guess = (1.0-nullprob)* theta_guess/trapezoid(x_grid, theta_guess)
 
 	# We sweep through the data npasses times in random order
@@ -53,7 +54,8 @@ prfdr_het = function(z, mu0=0.0, sig0, control=list()) {
 	# Initial guess for alternative density and pi0
 	x_grid = seq(min(z), max(z), length=mycontrol$gridsize)
 	nullprob = 0.95
-	theta_guess = pmin(1, 0.1+seq(-2,2, length=mycontrol$gridsize)^2)
+	# theta_guess = pmin(1, 0.1+seq(-2,2, length=mycontrol$gridsize)^2)
+	theta_guess = rep(1, length(x_grid))
 	theta_guess = (1.0-nullprob)* theta_guess/trapezoid(x_grid, theta_guess)
 
 	# We sweep through the data npasses times in random order

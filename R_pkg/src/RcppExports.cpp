@@ -281,6 +281,39 @@ RcppExport SEXP FDRreg_FullyBayesFDRregCPP(SEXP zSEXP, SEXP XSEXP, SEXP M0SEXP, 
     UNPROTECT(1);
     return __result;
 }
+// fl_dp
+NumericVector fl_dp(NumericVector y, double lam);
+RcppExport SEXP FDRreg_fl_dp(SEXP ySEXP, SEXP lamSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP );
+        Rcpp::traits::input_parameter< double >::type lam(lamSEXP );
+        NumericVector __result = fl_dp(y, lam);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
+// fl_dp_weight
+NumericVector fl_dp_weight(NumericVector y, NumericVector w, double lam);
+RcppExport SEXP FDRreg_fl_dp_weight(SEXP ySEXP, SEXP wSEXP, SEXP lamSEXP) {
+BEGIN_RCPP
+    SEXP __sexp_result;
+    {
+        Rcpp::RNGScope __rngScope;
+        Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP );
+        Rcpp::traits::input_parameter< NumericVector >::type w(wSEXP );
+        Rcpp::traits::input_parameter< double >::type lam(lamSEXP );
+        NumericVector __result = fl_dp_weight(y, w, lam);
+        PROTECT(__sexp_result = Rcpp::wrap(__result));
+    }
+    UNPROTECT(1);
+    return __sexp_result;
+END_RCPP
+}
 // mysample
 int mysample(NumericVector probs);
 static SEXP FDRreg_mysample_try(SEXP probsSEXP) {

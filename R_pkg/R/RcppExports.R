@@ -29,6 +29,14 @@ FullyBayesFDRregCPP <- function(z, X, M0, M1, PriorPrecision, PriorMean, nmc, nb
     .Call('FDRreg_FullyBayesFDRregCPP', PACKAGE = 'FDRreg', z, X, M0, M1, PriorPrecision, PriorMean, nmc, nburn, betaguess)
 }
 
+fl_dp <- function(y, lam) {
+    .Call('FDRreg_fl_dp', PACKAGE = 'FDRreg', y, lam)
+}
+
+fl_dp_weight <- function(y, w, lam) {
+    .Call('FDRreg_fl_dp_weight', PACKAGE = 'FDRreg', y, w, lam)
+}
+
 mysample <- function(probs) {
     .Call('FDRreg_mysample', PACKAGE = 'FDRreg', probs)
 }

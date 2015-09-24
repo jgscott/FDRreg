@@ -9,3 +9,5 @@ src/RNG.o
 src/RRNG.o
 src/RcppExports.o
 *.o
+*.gz
+*.so
