@@ -14,6 +14,7 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', stderr = NUL
 		mycontrol$npasses = 10
 		mycontrol$lambda = 0.01
 		mycontrol$densknots=10
+		mycontrol$nmids=150
 	} else if(method=='efron') {
 		mycontrol$gridsize = 150
 		mycontrol$nmids=150
@@ -34,7 +35,7 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', stderr = NUL
 		if(nulltype=='empirical') {
 
 			# Currently using my implementation of Efron's central matching estimator
-			l1 = efron(z, nmids=150, df=mycontrol$densknots, nulltype=nulltype)
+			l1 = efron(z, nmids=mycontrol$nmids, df=mycontrol$densknots, nulltype=nulltype)
 			mu0 = l1$mu0
 			sig0 = l1$sig0
 
