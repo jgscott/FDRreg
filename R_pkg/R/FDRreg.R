@@ -71,6 +71,11 @@ FDRreg = function(z, features, nulltype='theoretical', method='pr', stderr = NUL
 			M1[m1zeros] = min(M1[-m1zeros]) # substitute in the smallest nonzero value
 			M1 = pmax(M1, .Machine$double.eps) # shouldn't happen but just in case!
 		}
+		m0zeros = which(M0 < .Machine$double.eps)
+                if(length(m0zeros > 0)) {
+                        M0[m0zeros] = min(M0[-m0zeros]) # substitute in the smallest nonzero value
+                        M0 = pmax(M0, .Machine$double.eps) # shouldn't happen but just in case!
+                }
 		x_grid = prfit$x_grid
 		regressfit = fdrr_regress_pr(M0, M1, X, 1-p0, lambda=mycontrol$lambda)
 
