@@ -6,6 +6,7 @@ Date: 2015-09-24
 Author: James G. Scott, with contributions from Rob Kass, Jesse Windle, and 
 Maintainer: James G. Scott <james.scott@mccombs.utexas.edu>
 Description: Tools for FDR problems, including false discovery rate regression and smoothing. See corresponding paper: "False discovery rate regression: application to neural synchrony detection in primary visual cortex."  James G. Scott, Ryan C. Kelly, Matthew A. Smith, Pengcheng Zhou, and Robert E. Kass (2015).  Journal of the American Statistical Association, DOI: 10.1080/01621459.2014.990973. arXiv:1307.3495 [stat.ME].
+SystemRequirements: C++11
 License: GPL (>= 3)
 Imports:
     Rcpp (>= 0.11.0),
